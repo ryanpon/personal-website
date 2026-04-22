@@ -1,5 +1,5 @@
 ---
-
+import Terminal from "../components/Terminal.tsx";
 ---
 
 <html lang="en">
@@ -7,11 +7,75 @@
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
+		<link
+			rel="preload"
+			href="/fonts/MapleMono-VF.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
+		/>
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Astro</title>
 	</head>
 	<body>
-		<h1>Astro</h1>
+		<Terminal client:load />
 	</body>
 </html>
+
+<style is:global>
+	@font-face {
+		font-family: "Maple Mono";
+		src: url("/fonts/MapleMono-VF.woff2") format("woff2-variations");
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
+	}
+
+	body {
+	    font: 20px/1.5 monospace;
+		background-color: rgb(35, 38, 47);
+		color: white;
+		font-family: "Maple Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+			Consolas, monospace;
+	}
+
+	input,
+	textarea,
+	select,
+	button {
+		font: inherit;
+		background-color: inherit;
+		color: white;
+		border: none;
+		outline: none;
+		caret-shape: block;
+	}
+
+	.autocomplete-wrapper {
+	  position: relative;
+	  display: inline-block;
+
+	  input, .ghost-text {
+	    padding: 0px;
+	    box-sizing: border-box;
+	  }
+
+	  .ghost-text {
+	    position: absolute;
+	    top: 0; left: 0;
+	    color: transparent;        /* hide the typed portion */
+	    pointer-events: none;
+	    white-space: pre;
+	  }
+
+	  .ghost-text .suggestion {
+	    color: #aaa;               /* visible suggestion portion */
+	  }
+
+	  input {
+	    position: relative;
+	    background: transparent;
+	  }
+	}
+</style>

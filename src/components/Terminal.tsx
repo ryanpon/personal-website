@@ -66,7 +66,8 @@ export default function Terminal() {
   const [scrollbackVal, setScrollback] = useState(null);
   const match = getMatch(inputVal);
   const suggestion = match ? match.slice(inputVal.length) : '';
-
+  const bottomRef = useRef(null);
+  
   // History
   //   Ctrl+R — incremental backward search through history
   //   !! — repeat last command
@@ -90,14 +91,12 @@ export default function Terminal() {
     if (e.key === 'ArrowUp' && commands.length > 0) {
       e.preventDefault();
       const newScrollbackVal = Math.max((scrollbackVal === null ? commands.length : scrollbackVal) - 1, 0);
-      console.log('newScrollbackVal', newScrollbackVal);
       setInput(commands[newScrollbackVal]);
       setScrollback(newScrollbackVal);
     }
     if (e.key === 'ArrowDown' && scrollbackVal !== null && scrollbackVal < commands.length) {
       e.preventDefault();
       const newScrollbackVal = Math.min(scrollbackVal + 1, commands.length - 1);
-      console.log('newScrollbackVal', newScrollbackVal);
       setInput(commands[newScrollbackVal]);
       setScrollback(newScrollbackVal);
     }
@@ -113,6 +112,10 @@ export default function Terminal() {
       setLines(prev => [...prev, command, ...outputLines]);
       setCommands(prev => [...prev, inputVal])
       setInput('');
+
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 0);
     }
   }
 
@@ -211,6 +214,7 @@ export default function Terminal() {
           autoFocus
         />
       </div>
+      <div ref={bottomRef} />
     </div>
   );
 }

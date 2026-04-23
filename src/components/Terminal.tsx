@@ -1,5 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 
+const colors = {
+  background: "#272822",
+  foreground: "#f8f8f2",
+  gray: "#75715e",
+  yellow: "#e6db74",
+  purple: "#ae81ff",
+  lightPurple: "#d3bdf9",
+  pink: "#f92672",
+  green: "#a6e22e",
+  cyan: "#66d9ef",
+};
+
+function colorSpan(text, color) {
+  return (<span style={{ color }}>{text}</span>)
+}
+
 export default function Terminal() {
   const autocompleteOptions = [
     "help",
@@ -15,9 +31,29 @@ export default function Terminal() {
       endYear: 2026,
       tagLine: "I built merchant lending.",
       longLines: [
-        "asdf",
-        "asdf",
-        "asdf",
+        "Tech lead for Square Loans 2021-2026; senior engineer from 2016.",
+        "",
+        "Led platform engineering across 6 teams. The program originated billions",
+        "a year and the platform processed several million payments a day.",
+        "",
+        "Architected the delinquency system — a past-due and billing engine that",
+        "unblocked FDIC certification for Square's industrial bank. Has processed",
+        "10B events over 5 years with zero accuracy issues.",
+        "",
+        "Led Modernize Credit: a type-validated config DSL and lockfile framework",
+        "unifying 250 configs across 20 credit products. Servicing onboarding",
+        "dropped from 16+ weeks to 2 weeks per new product.",
+        "",
+        "Led a 2-year credit card servicing vendor integration across 4 teams —",
+        "the first decoupling of loan servicing from the lending monolith.",
+        "Designed the API gateway and payment processing layer.",
+        "",
+        "Shipped PPP loan servicing and the SBA integration in 6 weeks.",
+        "",
+        "Spent a lot of time on MySQL and job queue performance across the org.",
+        "Introduced message quarantining, staggered scheduling, and an",
+        "operational review process to stay ahead of saturation. Mentored a few",
+        "engineers into senior roles.",
       ]
     },
     earnest: {
@@ -25,9 +61,19 @@ export default function Terminal() {
       endYear: 2016,
       tagLine: "I built student lending.",
       longLines: [
-        "asdf",
-        "asdf",
-        "asdf",
+        "Software engineer at Earnest, a student loan refinancer. Joined at ~4",
+        "engineers; helped scale to 40+ as we grew into the second-largest",
+        "refinancer in the country.",
+        "",
+        "Built core platform pieces: loan servicing, a distributed task queue on",
+        "SQS, and the auth/ACL layer.",
+        "",
+        "Set up the company's first code review, test coverage, linting, and CI",
+        "practices. Designed the tech interview process we used to hire most of",
+        "engineering.",
+        "",
+        "Did security work on the side: pen testing, security reviews, and",
+        "patching a handful of critical vulnerabilities.",
       ]
     },
     quad_analytix: {
@@ -35,9 +81,15 @@ export default function Terminal() {
       endYear: 2014,
       tagLine: "I made a frontend for data entry.",
       longLines: [
-        "asdf",
-        "asdf",
-        "asdf",
+        "Frontend engineer on a data entry platform (AngularJS, jQuery, Java).",
+        "",
+        "Led the migration of the legacy jQuery UI to AngularJS and owned most",
+        "of the frontend: internal tools, crowdsourcing tools, and the main",
+        "enterprise app.",
+        "",
+        "Redesigned the data entry UX to show form fields next to a capture of",
+        "the source page, so operators stopped tab-switching. Throughput on the",
+        "data entry team more than doubled.",
       ]
     },
     shortcircuit: {
@@ -45,9 +97,12 @@ export default function Terminal() {
       endYear: 2013,
       tagLine: "I made a public transit routing app.",
       longLines: [
-        "asdf",
-        "asdf",
-        "asdf",
+        "Backend engineer on Rover, a realtime public transit routing app with",
+        "100K users (Python/Flask on Heroku).",
+        "",
+        "Built the realtime routing backend. Ported the graph preprocessing",
+        "pipeline from Python to Go, which shaved about half an hour off our",
+        "build times.",
       ]
     },
   };
@@ -127,20 +182,23 @@ export default function Terminal() {
     }
 
     if (command == 'help') {
-      return Object.entries(optionHelp).map(([cmdName, helpTxt]) =>
-        `${cmdName}: ${helpTxt}`
-      );
+      return [
+        "Available commands:",
+        ...Object.entries(optionHelp).map(([cmdName, helpTxt]) =>
+          (<span>&nbsp;&nbsp;{colorSpan(cmdName, colors.purple)} – {helpTxt}</span>)
+        )
+      ];
     }
 
     if (command == 'resume') {
       if (args.length === 0) {
         return [(
           <div>
-            <div>`resume company_name` for more info.</div>
+            <div>`resume {colorSpan('company_name', colors.lightPurple)}` for more info.</div>
             {
               Object.entries(resumeEntries).map(([company, entry]) => 
                 <div>
-                  &nbsp;&nbsp;[{company}] :: ({entry.startYear}-{entry.endYear}) :: {entry.tagLine}
+                  &nbsp;&nbsp;[{colorSpan(company, colors.purple)}] :: {entry.startYear}-{entry.endYear} :: {entry.tagLine}
                 </div>
               )
             }
@@ -155,7 +213,7 @@ export default function Terminal() {
         }
 
         return [
-          `${arg} (${entry.startYear}-${entry.endYear}) ::`,
+          `${arg} :: ${entry.startYear}-${entry.endYear} ::`,
           ...entry.longLines.map(l => <span>&nbsp;&nbsp;{l}</span>)
         ];
       }).flat();
@@ -190,19 +248,13 @@ export default function Terminal() {
 
   return (
     <div>
-      {
-        lines.map((v, idx) => 
-          <div key={idx}>
-            <span style={{/* color: '#aaa' */}}>{v}</span>
-          </div>
-        )
-      }
+      { lines.map((line, idx) => <div key={idx}>{line}</div>) }
 
-      %&nbsp;
+      <span style={{color: colors.lightPurple}}>%&nbsp;</span>
       <div className="autocomplete-wrapper">
         <div className="ghost-text" id="terminal-autocomplete-ghost">
           {inputVal}
-          <span style={{ color: '#aaa' }}>{suggestion}</span>
+          {colorSpan(suggestion, colors.gray)}
         </div>
         <input
           type="text"

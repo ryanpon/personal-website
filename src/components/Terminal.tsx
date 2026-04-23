@@ -43,7 +43,7 @@ export default function Terminal() {
     shortcircuit: {
       startYear: 2012,
       endYear: 2013,
-      tagLine: "I made the backend for a Transit Routing App.",
+      tagLine: "I made a public transit routing app.",
       longLines: [
         "asdf",
         "asdf",
@@ -67,16 +67,37 @@ export default function Terminal() {
   const match = getMatch(inputVal);
   const suggestion = match ? match.slice(inputVal.length) : '';
 
+  // History
+  //   Ctrl+R — incremental backward search through history
+  //   !! — repeat last command
+  //   !$ — last argument of previous command
+  //   !^ — first argument of previous command
+  //   !:n — nth argument of previous command
+  //   !string — run last command starting with "string"
+  // 
+  // Editing
+  //   Ctrl+A / Ctrl+E — jump to start/end of line
+  //   Ctrl+W — delete word backward
+  //   Alt+D — delete word forward
+  //   Ctrl+K — kill to end of line
+  //   Ctrl+U — kill to beginning of line
+  //   Ctrl+Y — yank (paste) killed text
+  //   Alt+. — insert last argument of previous command (repeatable!)
+  // 
+  // Autocomplete
+  //   Ctrl+X Ctrl+H — show all completion helpers for current context
   function handleKeyDown(e) {
     if (e.key === 'ArrowUp' && commands.length > 0) {
       e.preventDefault();
-      const newScrollbackVal = (scrollbackVal === null ? commands.length : scrollbackVal) - 1;
+      const newScrollbackVal = Math.max((scrollbackVal === null ? commands.length : scrollbackVal) - 1, 0);
+      console.log('newScrollbackVal', newScrollbackVal);
       setInput(commands[newScrollbackVal]);
       setScrollback(newScrollbackVal);
     }
     if (e.key === 'ArrowDown' && scrollbackVal !== null && scrollbackVal < commands.length) {
       e.preventDefault();
-      const newScrollbackVal = scrollbackVal + 1;
+      const newScrollbackVal = Math.min(scrollbackVal + 1, commands.length - 1);
+      console.log('newScrollbackVal', newScrollbackVal);
       setInput(commands[newScrollbackVal]);
       setScrollback(newScrollbackVal);
     }
@@ -116,7 +137,7 @@ export default function Terminal() {
             {
               Object.entries(resumeEntries).map(([company, entry]) => 
                 <div>
-                  &nbsp;&nbsp;[{company}] ... ({entry.startYear}-{entry.endYear}): {entry.tagLine}
+                  &nbsp;&nbsp;[{company}] :: ({entry.startYear}-{entry.endYear}) :: {entry.tagLine}
                 </div>
               )
             }
@@ -146,7 +167,7 @@ export default function Terminal() {
     const handler = (e) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setLines(_ => [])
+        setLines(_ => []);
       }
     };
 

@@ -154,6 +154,16 @@ export default function Terminal() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  useEffect(() => {
+    const refocus = () => {
+      if (window.getSelection()?.toString()) return;
+      inputRef.current?.focus();
+    };
+
+    document.addEventListener('mouseup', refocus);
+    return () => document.removeEventListener('mouseup', refocus);
+  }, []);
+
   return (
     <div>
       {
@@ -170,11 +180,12 @@ export default function Terminal() {
           {inputVal}
           <span style={{ color: '#aaa' }}>{suggestion}</span>
         </div>
-        <input 
-          type="text" 
+        <input
+          type="text"
           id="terminal-input"
-          value={inputVal} 
-          onChange={e => setInput(e.target.value)} 
+          ref={inputRef}
+          value={inputVal}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           autoFocus
         />

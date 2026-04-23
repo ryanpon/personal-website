@@ -1,38 +1,178 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Terminal() {
   const autocompleteOptions = [
     "help",
     "resume",
   ];
+  const optionHelp = {
+    help: "Get this help text.",
+    resume: "See Ryan's resume."
+  };
+  const resumeEntries = {
+    block: {
+      startYear: 2016,
+      endYear: 2026,
+      tagLine: "I built merchant lending.",
+      longLines: [
+        "asdf",
+        "asdf",
+        "asdf",
+      ]
+    },
+    earnest: {
+      startYear: 2014,
+      endYear: 2016,
+      tagLine: "I built student lending.",
+      longLines: [
+        "asdf",
+        "asdf",
+        "asdf",
+      ]
+    },
+    quad_analytix: {
+      startYear: 2013,
+      endYear: 2014,
+      tagLine: "I made a frontend for data entry.",
+      longLines: [
+        "asdf",
+        "asdf",
+        "asdf",
+      ]
+    },
+    shortcircuit: {
+      startYear: 2012,
+      endYear: 2013,
+      tagLine: "I made the backend for a Transit Routing App.",
+      longLines: [
+        "asdf",
+        "asdf",
+        "asdf",
+      ]
+    },
+  };
+  
+  // TODO: autocomplete for command args
   function getMatch(value) {
-    if (!value) return 'help';
+    if (!value) {
+      return lines.length === 0 ? 'help' : '';
+    }
     return autocompleteOptions.find(s => s.toLowerCase().startsWith(value.toLowerCase())) ?? null;
   }
 
+  const [lines, setLines] = useState([]);
+  const [commands, setCommands] = useState([]);
   const [inputVal, setInput] = useState('');
+  const [scrollbackVal, setScrollback] = useState(null);
   const match = getMatch(inputVal);
   const suggestion = match ? match.slice(inputVal.length) : '';
 
   function handleKeyDown(e) {
+    if (e.key === 'ArrowUp' && commands.length > 0) {
+      e.preventDefault();
+      const newScrollbackVal = (scrollbackVal === null ? commands.length : scrollbackVal) - 1;
+      setInput(commands[newScrollbackVal]);
+      setScrollback(newScrollbackVal);
+    }
+    if (e.key === 'ArrowDown' && scrollbackVal !== null && scrollbackVal < commands.length) {
+      e.preventDefault();
+      const newScrollbackVal = scrollbackVal + 1;
+      setInput(commands[newScrollbackVal]);
+      setScrollback(newScrollbackVal);
+    }
     if ((e.key === 'Tab' || e.key === 'ArrowRight') && suggestion) {
       e.preventDefault();
-      console.log(suggestion);
-      setInput(suggestion);
+      setInput(match);
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const command = `% ${inputVal}`;
+      const outputLines = dispatchCommand(inputVal);
+      setScrollback(null);
+      setLines(prev => [...prev, command, ...outputLines]);
+      setCommands(prev => [...prev, inputVal])
+      setInput('');
     }
   }
 
+  function dispatchCommand(inputStr) {
+    const [command, ...args] = inputStr.split(' ');
+
+    if (!command){
+      return [''];
+    }
+
+    if (command == 'help') {
+      return Object.entries(optionHelp).map(([cmdName, helpTxt]) =>
+        `${cmdName}: ${helpTxt}`
+      );
+    }
+
+    if (command == 'resume') {
+      if (args.length === 0) {
+        return [(
+          <div>
+            <div>`resume company_name` for more info.</div>
+            {
+              Object.entries(resumeEntries).map(([company, entry]) => 
+                <div>
+                  &nbsp;&nbsp;[{company}] ... ({entry.startYear}-{entry.endYear}): {entry.tagLine}
+                </div>
+              )
+            }
+          </div>
+        )];
+      }
+
+      return args.map(arg => {
+        const entry =  resumeEntries[arg];
+        if (!entry) {
+          return [`resume: company not found: ${arg}`];
+        }
+
+        return [
+          `${arg} (${entry.startYear}-${entry.endYear}) ::`,
+          ...entry.longLines.map(l => <span>&nbsp;&nbsp;{l}</span>)
+        ];
+      }).flat();
+    } 
+
+    return [`command not found: ${command}`];
+  }
+
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setLines(_ => [])
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <div>
+      {
+        lines.map((v, idx) => 
+          <div key={idx}>
+            <span style={{/* color: '#aaa' */}}>{v}</span>
+          </div>
+        )
+      }
+
       %&nbsp;
       <div className="autocomplete-wrapper">
-        <div className="ghost-text" id="ghost">
+        <div className="ghost-text" id="terminal-autocomplete-ghost">
           {inputVal}
           <span style={{ color: '#aaa' }}>{suggestion}</span>
         </div>
         <input 
           type="text" 
-          id="input"
+          id="terminal-input"
           value={inputVal} 
           onChange={e => setInput(e.target.value)} 
           onKeyDown={handleKeyDown}

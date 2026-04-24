@@ -7,5 +7,6 @@ export type CommandContext = {
 export type Command = {
   name: string;
   help: string;
+  options: Optional[string[]];
   run: (args: string[], ctx: CommandContext) => ReactNode[];
 };

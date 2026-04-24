@@ -36,7 +36,6 @@ export default function Terminal() {
   const history = useCommandHistory();
   const { match, suggestion } = useAutocomplete(
     inputVal,
-    commandNames,
     lines.length === 0 ? "help" : null,
   );
   const bottomRef = useRef<HTMLDivElement>(null);

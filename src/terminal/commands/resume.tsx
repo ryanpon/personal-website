@@ -5,6 +5,7 @@ import type { Command } from "./types";
 export const resumeCommand: Command = {
   name: "resume",
   help: "See Ryan's resume.",
+  options: Object.keys(resumeEntries),
   run: (args) => {
     if (args.length === 0) {
       return [

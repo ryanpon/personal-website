@@ -52,9 +52,15 @@ import Terminal from "../components/Terminal.tsx";
 		caret-shape: block;
 	}
 
+	.terminal-input-line {
+	  display: flex;
+	  align-items: baseline;
+	}
+
 	.autocomplete-wrapper {
 	  position: relative;
-	  display: inline-block;
+	  flex: 1;
+	  min-width: 0;
 
 	  input, .ghost-text {
 	    padding: 0px;
@@ -76,6 +82,7 @@ import Terminal from "../components/Terminal.tsx";
 	  input {
 	    position: relative;
 	    background: transparent;
+	    width: 100%;
 	  }
 	}
 </style>

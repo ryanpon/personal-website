@@ -17,7 +17,7 @@ export default function TerminalInput({
   onKeyDown,
 }: Props) {
   return (
-    <>
+    <div className="terminal-input-line">
       <span style={{ color: colors.lightPurple }}>%&nbsp;</span>
       <div className="autocomplete-wrapper">
         <div className="ghost-text" id="terminal-autocomplete-ghost">
@@ -34,6 +34,6 @@ export default function TerminalInput({
           autoFocus
         />
       </div>
-    </>
+    </div>
   );
 }

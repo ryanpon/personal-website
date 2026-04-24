@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -6,7 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import TerminalInput from "./TerminalInput";
-import { commandNames, dispatch } from "../terminal/commands";
+import { dispatch } from "../terminal/commands";
+import type { ActiveApp } from "../terminal/commands/types";
 import { useAutocomplete } from "../terminal/hooks/useAutocomplete";
 import { useCommandHistory } from "../terminal/hooks/useCommandHistory";
 import { useTerminalFocus } from "../terminal/hooks/useTerminalFocus";
@@ -33,6 +35,7 @@ import { useTerminalFocus } from "../terminal/hooks/useTerminalFocus";
 export default function Terminal() {
   const [lines, setLines] = useState<ReactNode[]>([]);
   const [inputVal, setInput] = useState("");
+  const [activeApp, setActiveApp] = useState<ActiveApp | null>(null);
   const history = useCommandHistory();
   const { match, suggestion } = useAutocomplete(
     inputVal,
@@ -43,16 +46,29 @@ export default function Terminal() {
 
   useTerminalFocus(inputRef);
 
+  const exitApp = useCallback((trailingLines?: ReactNode[]) => {
+    setActiveApp(null);
+    if (trailingLines && trailingLines.length > 0) {
+      setLines(prev => [...prev, ...trailingLines]);
+    }
+  }, []);
+
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setLines([]);
+        return;
+      }
+      if (activeApp && e.key === "c" && e.ctrlKey) {
+        if (window.getSelection()?.toString()) return;
+        e.preventDefault();
+        exitApp();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [activeApp, exitApp]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowUp") {
@@ -76,15 +92,25 @@ export default function Terminal() {
     if (e.key === "Enter") {
       e.preventDefault();
       const commandLine = `% ${inputVal}`;
-      const output = dispatch(inputVal);
-      setLines(prev => [...prev, commandLine, ...output]);
+      const result = dispatch(inputVal);
       history.push(inputVal);
       setInput("");
 
+      if (result.kind === "app") {
+        setActiveApp(result.app);
+        return;
+      }
+
+      setLines(prev => [...prev, commandLine, ...result.lines]);
       setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 0);
     }
+  }
+
+  if (activeApp) {
+    const App = activeApp.Component;
+    return <App onExit={exitApp} />;
   }
 
   return (

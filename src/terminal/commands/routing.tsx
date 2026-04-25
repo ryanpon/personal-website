@@ -83,6 +83,7 @@ function gridNeighbors(x, y, minX, maxX, minY, maxY) {
 
 function RoutingApp({ onExit }: { onExit: AppExit }) {
   const arraySize = 20;
+  const cellSize = 24;
 
   function renderGrid(contentEntries, emptyVal = '.') {
     const initialGrid = Array.from({ length: arraySize }, () => new Array(arraySize).fill(emptyVal));
@@ -202,15 +203,19 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       </div>
       <div>&nbsp;</div>
       
-      {
-        gridState.grid.map((row, rowIdx) => (
-          <div key={`row${rowIdx}`}>
-            {
-              row.map((col, colIdx) => (<span key={`row${rowIdx}col${colIdx}`}>&nbsp;{col}</span>))
-            }
-          </div>
-        ))
-      }
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${arraySize}, ${cellSize}px)`,
+          gridAutoRows: `${cellSize}px`,
+          lineHeight: `${cellSize}px`,
+          textAlign: "center",
+        }}
+      >
+        {gridState.grid.flat().map((cell, idx) => (
+          <span key={idx}>{cell}</span>
+        ))}
+      </div>
 
       <div>&nbsp;</div>
       <div style={{ color: colors.gray }}>

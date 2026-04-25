@@ -109,8 +109,22 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
   useEffect(() => {
     const refresh = () => {
+      function buildGrid(visited, start, end, path = []) {
+        const visitedContent = Object.entries(visited).map(([key, value]) => {
+          const [xStr, yStr] = key.split(",");
+          const content = !!value ? "o" : "█";
+          return [parseInt(xStr), parseInt(yStr), content];
+        });
+        const pathContent = path.map(([x, y]) =>
+          [x, y, colorSpan('x', colors.lightPurple)]
+        );
+        const startContent = [...start, colorSpan('S', colors.purple)];
+        const endContent = [...end, colorSpan('E', colors.purple)];
+        return renderGrid([...visitedContent, ...pathContent, startContent, endContent]);
+      }
+
       function runRouting(prev) {
-        const {grid, start, end, toVisit, visited, ...rest} = prev;
+        const {start, end, toVisit, visited} = prev;
         if (Object.keys(visited).length === 0) {
           toVisit.push(0, start);
           for (var i = 3; i < 15; i++) {
@@ -129,54 +143,28 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           toVisit.push(dist(nX, nY, end[0], end[1]), neighbor)
         });
 
-        const gridContent = Object.entries(visited).map(([key, value]) => {
-          const [xStr, yStr] = key.split(",");
-          const content = !!value ? "o" : "█";
-          return [parseInt(xStr), parseInt(yStr), content];
-        });
-        const startContent = [...start, colorSpan('S', colors.purple)];
-        const endContent = [...end, colorSpan('E', colors.purple)];
         return {
-          grid: renderGrid([...gridContent, startContent, endContent]),
-          start, 
-          end, 
-          toVisit, 
-          visited,
-          ...rest
+          ...prev,
+          grid: buildGrid(visited, start, end),
         };
       }
 
       function runRouteHighlight(prev) {
-        const {path, grid, start, end, toVisit, visited, ...rest} = prev;
+        const {path, start, end, visited} = prev;
         if (path.at(-1) === start) {
           return prev; // done
         }
-
-        const initialGridContent = Object.entries(visited).map(([key, value]) => {
-          const [xStr, yStr] = key.split(",");
-          const content = !!value ? "o" : "█";
-          return [parseInt(xStr), parseInt(yStr), content];
-        });
-        Object.entries(visited).map(([key, value]) => {
-          const [xStr, yStr] = key.split(",");
-          const content = !!value ? "o" : "█";
-          return [parseInt(xStr), parseInt(yStr), content];
-        });
-        const startContent = [...start, colorSpan('S', colors.purple)];
-        const endContent = [...end, colorSpan('E', colors.purple)];
 
         if (path.length === 0) {
           path.push(end);
         } else {
           path.push(visited[path.at(-1)]);
         }
-        const pathContent = path.map(([x, y]) => 
-          [x, y, colorSpan('x', colors.lightPurple)]
-        );
+
         return {
-          ...prev, 
-          grid: renderGrid([...initialGridContent, ...pathContent, startContent, endContent]), 
-          path
+          ...prev,
+          grid: buildGrid(visited, start, end, path),
+          path,
         };
       }
 

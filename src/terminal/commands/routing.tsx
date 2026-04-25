@@ -92,16 +92,18 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     return initialGrid;
   }
 
-  const initialState = {
-    grid: renderGrid([]),
-    toVisit: new MinHeap(),
-    visited: {},
-    path: [],
-    start: [0, 0],
-    end: [10, 10]
-  };
+  function makeInitialState() {
+    return {
+      grid: renderGrid([]),
+      toVisit: new MinHeap(),
+      visited: {},
+      path: [],
+      start: [0, 0],
+      end: [10, 10]
+    };
+  }
 
-  const [gridState, setGridState] = useState(initialState);
+  const [gridState, setGridState] = useState(makeInitialState);
 
   useEffect(() => {
     const refresh = () => {
@@ -109,6 +111,11 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         const {grid, start, end, toVisit, visited, ...rest} = prev;
         if (Object.keys(visited).length === 0) {
           toVisit.push(0, start);
+          for (var i = 3; i < 15; i++) {
+            visited[[i, 3]] = null;
+            visited[[3, i]] = null;
+          }
+
         }
         const [_, curNode] = toVisit.pop();
         const neighbors = gridNeighbors(curNode[0], curNode[1], 0, 19, 0, 19);
@@ -120,9 +127,10 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           toVisit.push(dist(nX, nY, end[0], end[1]), neighbor)
         });
 
-        const gridContent = Object.keys(visited).map(key => {
-          const [xStr, yStr] = key.split(',');
-          return [parseInt(xStr), parseInt(yStr), "o"];
+        const gridContent = Object.entries(visited).map(([key, value]) => {
+          const [xStr, yStr] = key.split(",");
+          const content = !!value ? "o" : "█";
+          return [parseInt(xStr), parseInt(yStr), content];
         });
         return {
           grid: renderGrid(gridContent),
@@ -140,9 +148,10 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           return prev; // done
         }
 
-        const initialGridContent = Object.keys(visited).map(key => {
-          const [xStr, yStr] = key.split(',');
-          return [parseInt(xStr), parseInt(yStr), "o"];
+        const initialGridContent = Object.entries(visited).map(([key, value]) => {
+          const [xStr, yStr] = key.split(",");
+          const content = !!value ? "o" : "█";
+          return [parseInt(xStr), parseInt(yStr), content];
         });
 
         if (path.length === 0) {
@@ -150,7 +159,9 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         } else {
           path.push(visited[path.at(-1)]);
         }
-        const pathContent = path.map(([x, y]) => [x, y, 'x']);
+        const pathContent = path.map(([x, y]) => 
+          [x, y, colorSpan('x', colors.lightPurple)]
+        );
         return {...prev, grid: renderGrid([...initialGridContent, ...pathContent]), path};
       }
 
@@ -177,7 +188,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
       if (e.key === "r" || e.key === "R") {
         e.preventDefault();
-        useState(initialState);
+        setGridState(makeInitialState());
       }
     };
     window.addEventListener("keydown", onKey);
@@ -213,7 +224,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
 export const routingCommand: Command = {
   name: "routing",
-  help: "Visualize a greedy grid pathfinding search.",
+  help: "An animated pathfinding algorithm!",
   run: () => ({
     kind: "app",
     app: { name: "routing", Component: RoutingApp },

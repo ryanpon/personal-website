@@ -60,8 +60,8 @@ function pad(s: string | number, width: number, right = false) {
   return right ? str + fill : fill + str;
 }
 
-function mdist(x1, y1, x2, y2) {
-  return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+function dist(x1, y1, x2, y2) {
+  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
 function gridNeighbors(x, y, minX, maxX, minY, maxY) {
@@ -92,25 +92,24 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     return initialGrid;
   }
 
-  const [gridState, setGridState] = useState({
+  const initialState = {
     grid: renderGrid([]),
     toVisit: new MinHeap(),
     visited: {},
+    path: [],
     start: [0, 0],
     end: [10, 10]
-  });
+  };
+
+  const [gridState, setGridState] = useState(initialState);
 
   useEffect(() => {
     const refresh = () => {
-      setGridState(prev => {
+      function runRouting(prev) {
         const {grid, start, end, toVisit, visited, ...rest} = prev;
         if (Object.keys(visited).length === 0) {
           toVisit.push(0, start);
         }
-        if (end in visited || toVisit.length === 0) {
-          return prev; // done or we didn't get to the finish
-        }
-
         const [_, curNode] = toVisit.pop();
         const neighbors = gridNeighbors(curNode[0], curNode[1], 0, 19, 0, 19);
         neighbors.forEach(neighbor => {
@@ -118,7 +117,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
           const [nX, nY] = neighbor;
           visited[neighbor] = curNode;
-          toVisit.push(mdist(nX, nY, end[0], end[1]), neighbor)
+          toVisit.push(dist(nX, nY, end[0], end[1]), neighbor)
         });
 
         const gridContent = Object.keys(visited).map(key => {
@@ -133,6 +132,35 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           visited,
           ...rest
         };
+      }
+
+      function runRouteHighlight(prev) {
+        const {path, grid, start, end, toVisit, visited, ...rest} = prev;
+        if (path.at(-1) === start) {
+          return prev; // done
+        }
+
+        const initialGridContent = Object.keys(visited).map(key => {
+          const [xStr, yStr] = key.split(',');
+          return [parseInt(xStr), parseInt(yStr), "o"];
+        });
+
+        if (path.length === 0) {
+          path.push(end);
+        } else {
+          path.push(visited[path.at(-1)]);
+        }
+        const pathContent = path.map(([x, y]) => [x, y, 'x']);
+        return {...prev, grid: renderGrid([...initialGridContent, ...pathContent]), path};
+      }
+
+      setGridState(prev => {
+        const {end, toVisit, visited, ...rest} = prev;
+        if (end in visited) {
+          return runRouteHighlight(prev); // done
+        } 
+
+        return runRouting(prev);
       });
 
     };
@@ -145,6 +173,11 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       if (e.key === "q" || e.key === "Q") {
         e.preventDefault();
         onExit();
+      }
+
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        useState(initialState);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -171,7 +204,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       <div>&nbsp;</div>
       <div style={{ color: colors.gray }}>
         Press {colorSpan("q", colors.lightPurple)} or{" "}
-        {colorSpan("Ctrl+C", colors.lightPurple)} to quit.
+        {colorSpan("Ctrl+C", colors.lightPurple)} to quit,{" "}
+        {colorSpan("r", colors.lightPurple)} to restart.
       </div>
     </div>
   );

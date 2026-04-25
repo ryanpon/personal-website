@@ -106,8 +106,19 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   }
 
   const [gridState, setGridState] = useState(makeInitialState);
+  const [paused, setPaused] = useState(false);
+
+  function pause() {
+    setPaused(true);
+  }
+
+  function unpause() {
+    setPaused(false);
+  }
 
   useEffect(() => {
+    if (paused) return;
+
     const refresh = () => {
       function buildGrid(visited, start, end, path = []) {
         const visitedContent = Object.entries(visited).map(([key, value]) => {
@@ -169,10 +180,13 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       }
 
       setGridState(prev => {
-        const {end, toVisit, visited, ...rest} = prev;
-        if (end in visited) {
-          return runRouteHighlight(prev); // done
-        } 
+        if (prev.end in prev.visited) {
+          const next = runRouteHighlight(prev);
+          if (next === prev) {
+            pause();
+          }
+          return next;
+        }
 
         return runRouting(prev);
       });
@@ -180,7 +194,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     };
     const id = window.setInterval(refresh, 100);
     return () => window.clearInterval(id);
-  }, []);
+  }, [paused]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -192,6 +206,12 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         setGridState(makeInitialState());
+        unpause();
+      }
+
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        setPaused(prev => !prev);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -221,9 +241,13 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
       <div>&nbsp;</div>
       <div style={{ color: colors.gray }}>
-        Press {colorSpan("q", colors.lightPurple)} or{" "}
-        {colorSpan("Ctrl+C", colors.lightPurple)} to quit,{" "}
-        {colorSpan("r", colors.lightPurple)} to restart.
+        {colorSpan("q", colors.lightPurple)} to quit
+      </div>
+      <div style={{ color: colors.gray }}>
+        {colorSpan("r", colors.lightPurple)} to restart
+      </div>
+      <div style={{ color: colors.gray }}>
+        {colorSpan("p", colors.lightPurple)} to toggle pause
       </div>
     </div>
   );

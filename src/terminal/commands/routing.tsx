@@ -100,7 +100,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       visited: {},
       path: [],
       start: [0, 0],
-      end: [10, 10]
+      end: [10, 10],
+      cursor: [0, 0]
     };
   }
 
@@ -133,8 +134,10 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           const content = !!value ? "o" : "█";
           return [parseInt(xStr), parseInt(yStr), content];
         });
+        const startContent = [...start, colorSpan('S', colors.purple)];
+        const endContent = [...end, colorSpan('E', colors.purple)];
         return {
-          grid: renderGrid(gridContent),
+          grid: renderGrid([...gridContent, startContent, endContent]),
           start, 
           end, 
           toVisit, 
@@ -154,6 +157,13 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           const content = !!value ? "o" : "█";
           return [parseInt(xStr), parseInt(yStr), content];
         });
+        Object.entries(visited).map(([key, value]) => {
+          const [xStr, yStr] = key.split(",");
+          const content = !!value ? "o" : "█";
+          return [parseInt(xStr), parseInt(yStr), content];
+        });
+        const startContent = [...start, colorSpan('S', colors.purple)];
+        const endContent = [...end, colorSpan('E', colors.purple)];
 
         if (path.length === 0) {
           path.push(end);
@@ -163,7 +173,11 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         const pathContent = path.map(([x, y]) => 
           [x, y, colorSpan('x', colors.lightPurple)]
         );
-        return {...prev, grid: renderGrid([...initialGridContent, ...pathContent]), path};
+        return {
+          ...prev, 
+          grid: renderGrid([...initialGridContent, ...pathContent, startContent, endContent]), 
+          path
+        };
       }
 
       setGridState(prev => {

@@ -12,12 +12,15 @@ const cellSize = 24;
 const emptyVal = '.';
 
 type Coord = [number, number];
-type VisitedValue = typeof BLOCKED | typeof START | Coord;
+type VisitedValue = { pred: Coord | null, dist: number };
 type Visited = Record<string, VisitedValue>;
+type CellTypes = Record<string, Symbol>;
 
 type GridState = {
   toVisit: MinHeap<Coord>;
   visited: Visited;
+  closed: Record<string, boolean>,
+  cellTypes: Record<string, Symbol>;
   path: Coord[];
   start: Coord;
   end: Coord;
@@ -66,14 +69,16 @@ function gridNeighbors(x: number, y: number, minX: number, maxX: number, minY: n
 }
 
 function makeInitialState(): GridState {
-  const visited: Visited = {};
+  const cellTypes: CellTypes = {};
   for (let i = 3; i < 15; i++) {
-    visited[coordKey([i, 3])] = BLOCKED;
-    visited[coordKey([3, i])] = BLOCKED;
+    cellTypes[coordKey([i, 3])] = BLOCKED;
+    cellTypes[coordKey([3, i])] = BLOCKED;
   }
   return {
     toVisit: new MinHeap<Coord>(),
-    visited,
+    visited: {},
+    closed: {},
+    cellTypes,
     path: [],
     start: [0, 0],
     end: [10, 10],
@@ -92,21 +97,44 @@ function reducer(state: GridState, action: Action): GridState {
       return reducer(state, { type: 'STEP' });
     }
     case 'STEP': {
-      const { start, end, toVisit, visited } = state;
+      const { start, end, toVisit, visited, closed, cellTypes } = state;
       if (!(coordKey(start) in visited)) {
-        visited[coordKey(start)] = START;
+        visited[coordKey(start)] = { pred: null, dist: 0 };
         toVisit.push(0, start);
       } else if (toVisit.size() === 0) {
         return state;
       }
-      const popped = toVisit.pop();
-      if (!popped) return state;
-      const [, curNode] = popped;
+      // we need to pop until we find something not in closed set
+      let curNode = null;
+      while (toVisit.size() > 0) {
+        const popped = toVisit.pop();
+        if (!popped) return state;
+
+        const [, candidateNode] = popped;
+        if (!(coordKey(candidateNode) in closed)) {
+          curNode = candidateNode;
+          break;
+        }
+      }
+      if (!curNode) return state;
+
+      closed[coordKey(curNode)] = true;
+
       const neighbors = gridNeighbors(curNode[0], curNode[1], 0, gridSize - 1, 0, gridSize - 1);
       neighbors.forEach(neighbor => {
-        if (coordKey(neighbor) in visited) return;
-        visited[coordKey(neighbor)] = curNode;
-        toVisit.push(dist(neighbor[0], neighbor[1], end[0], end[1]), neighbor);
+        // arcs are all the same for now
+        const arcLen = 1; 
+        const nKey = coordKey(neighbor);
+        if (nKey in closed) return;
+        // assume these are all blocked for now
+        if (nKey in cellTypes) return;
+
+        const newDist = visited[coordKey(curNode)].dist + arcLen;
+        if (!(nKey in visited) || newDist < visited[nKey].dist) {
+          visited[nKey] = { pred: curNode, dist: newDist };
+          const est = newDist + dist(neighbor[0], neighbor[1], end[0], end[1]);
+          toVisit.push(est, neighbor);
+        }
       });
       return { ...state };
     }
@@ -116,7 +144,7 @@ function reducer(state: GridState, action: Action): GridState {
       if (last && cmppair(last, start)) {
         return { ...state, done: true };
       }
-      const next = path.length === 0 ? end : visited[coordKey(path.at(-1)!)] as Coord;
+      const next = path.length === 0 ? end : visited[coordKey(path.at(-1)!)].pred as Coord;
       return { ...state, path: [...path, next] };
     }
     case 'MOVE_CURSOR': {
@@ -130,14 +158,14 @@ function reducer(state: GridState, action: Action): GridState {
       };
     }
     case 'TOGGLE_BLOCK': {
-      const visited: Visited = { ...state.visited };
+      const cellTypes: CellTypes = { ...state.cellTypes };
       const key = coordKey(state.cursor);
-      if (key in visited) {
-        delete visited[key];
+      if (key in cellTypes) {
+        delete cellTypes[key];
       } else if (!cmppair(state.cursor, state.start) && !cmppair(state.cursor, state.end)) {
-        visited[key] = BLOCKED;
+        cellTypes[key] = BLOCKED;
       }
-      return { ...state, visited };
+      return { ...state, cellTypes };
     }
     case 'SET_START':
       return { ...state, start: [...state.cursor] };
@@ -146,10 +174,15 @@ function reducer(state: GridState, action: Action): GridState {
     case 'RESET':
       return makeInitialState();
     case 'ENTER_EDIT': {
-      const visited: Visited = Object.fromEntries(
-        Object.entries(state.visited).filter(([, v]) => v === BLOCKED)
-      );
-      return { ...state, path: [], visited, toVisit: new MinHeap<Coord>(), done: false };
+      const visited: Visited = {};
+      return { 
+        ...state, 
+        path: [], 
+        visited,
+        closed: {}, 
+        toVisit: new MinHeap<Coord>(), 
+        done: false 
+      };
     }
   }
 }
@@ -171,9 +204,19 @@ function Grid({ gridState, tick, editMode, forceCursorVisible }: {
   forceCursorVisible: boolean;
 }) {
   const entries: ContentEntry[] = [];
-  for (const [key, value] of Object.entries(gridState.visited)) {
+  for (const [key, cellType] of Object.entries(gridState.cellTypes)) {
     const [xStr, yStr] = key.split(",");
-    entries.push([parseInt(xStr), parseInt(yStr), value === BLOCKED ? "█" : "o"]);
+    if (cellType === BLOCKED) {
+      entries.push([parseInt(xStr), parseInt(yStr), "█"]);
+    }
+  }
+  for (const [key,] of Object.entries(gridState.visited)) {
+    const [xStr, yStr] = key.split(",");
+    entries.push([parseInt(xStr), parseInt(yStr), ","]);
+  }
+  for (const [key,] of Object.entries(gridState.closed)) {
+    const [xStr, yStr] = key.split(",");
+    entries.push([parseInt(xStr), parseInt(yStr), "o"]);
   }
   for (const [x, y] of gridState.path) {
     entries.push([x, y, colorSpan('x', colors.lightPurple)]);

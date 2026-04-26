@@ -176,7 +176,32 @@ type Action =
 
 function makeInitialState(): GridState {
   const grid = new Grid(gridSize, [0, 0], [10, 10]);
-  ([[5, 3], [5, 4], [5, 5], [3, 5], [4, 5]] as Coord[]).forEach(c => grid.setType(c, 'BLOCKED'));
+  (
+    [
+      [0, 4],
+      [1, 4],
+      [2, 4],
+      [3, 4],
+
+      [7, 3],
+      [7, 4],
+      [7, 5],
+      [7, 6],
+      [7, 7],
+      [7, 8],
+      [7, 9],
+      [7, 10],
+      [7, 11],
+
+      [9, 9],
+      [10, 9],
+      [11, 9],
+
+      [9, 10],
+      [9, 11],
+      [9, 12],
+    ] as Coord[]
+  ).forEach(c => grid.setType(c, 'BLOCKED'));
   return { grid, search: new Pathfinder(gridSize) };
 }
 
@@ -414,7 +439,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     { key: 'arrowright', desc: 'move right', visible: editMode, fn: () => { dispatch({ type: 'MOVE_CURSOR', dx: 1, dy: 0 }); flashCursor(); } },
     { key: 's', desc: 'set the start location', visible: editMode, fn: () => dispatch({ type: 'SET_START' }) },
     { key: 'd', desc: 'set the end location', visible: editMode, fn: () => dispatch({ type: 'SET_END' }) },
-    { key: 'a', desc: 'toggle between blocked and unblocked', visible: editMode, fn: () => dispatch({ type: 'TOGGLE_BLOCK' }) },
+    { key: 'b', desc: 'toggle between blocked and unblocked', visible: editMode, fn: () => dispatch({ type: 'TOGGLE_BLOCK' }) },
   ], [onExit, editMode, paused, flashCursor]);
 
   useEffect(() => {

@@ -1,32 +1,34 @@
-export class MinHeap {
+export class MinHeap<T = unknown> {
+  private heap: [number, T][];
+
   constructor() {
     this.heap = [];
   }
 
-  push(key, val) {
+  push(key: number, val: T): void {
     this.heap.push([key, val]);
     this._bubbleUp(this.heap.length - 1);
   }
 
-  pop() {
+  pop(): [number, T] | undefined {
     const min = this.heap[0];
     const last = this.heap.pop();
-    if (this.heap.length > 0) {
+    if (this.heap.length > 0 && last !== undefined) {
       this.heap[0] = last;
       this._sinkDown(0);
     }
     return min;
   }
 
-  peek() {
+  peek(): [number, T] | undefined {
     return this.heap[0];
   }
 
-  size() {
+  size(): number {
     return this.heap.length;
   }
 
-  _bubbleUp(i) {
+  private _bubbleUp(i: number): void {
     while (i > 0) {
       const parent = Math.floor((i - 1) / 2);
       if (this.heap[parent][0] <= this.heap[i][0]) break;
@@ -35,7 +37,7 @@ export class MinHeap {
     }
   }
 
-  _sinkDown(i) {
+  private _sinkDown(i: number): void {
     const n = this.heap.length;
     while (true) {
       let smallest = i;

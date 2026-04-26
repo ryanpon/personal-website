@@ -16,7 +16,7 @@ type VisitedValue = typeof BLOCKED | typeof START | Coord;
 type Visited = Record<string, VisitedValue>;
 
 type GridState = {
-  toVisit: MinHeap;
+  toVisit: MinHeap<Coord>;
   visited: Visited;
   path: Coord[];
   start: Coord;
@@ -72,7 +72,7 @@ function makeInitialState(): GridState {
     visited[coordKey([3, i])] = BLOCKED;
   }
   return {
-    toVisit: new MinHeap(),
+    toVisit: new MinHeap<Coord>(),
     visited,
     path: [],
     start: [0, 0],
@@ -99,7 +99,9 @@ function reducer(state: GridState, action: Action): GridState {
       } else if (toVisit.size() === 0) {
         return state;
       }
-      const [, curNode] = toVisit.pop() as [number, Coord];
+      const popped = toVisit.pop();
+      if (!popped) return state;
+      const [, curNode] = popped;
       const neighbors = gridNeighbors(curNode[0], curNode[1], 0, gridSize - 1, 0, gridSize - 1);
       neighbors.forEach(neighbor => {
         if (coordKey(neighbor) in visited) return;
@@ -147,7 +149,7 @@ function reducer(state: GridState, action: Action): GridState {
       const visited: Visited = Object.fromEntries(
         Object.entries(state.visited).filter(([, v]) => v === BLOCKED)
       );
-      return { ...state, path: [], visited, toVisit: new MinHeap(), done: false };
+      return { ...state, path: [], visited, toVisit: new MinHeap<Coord>(), done: false };
     }
   }
 }

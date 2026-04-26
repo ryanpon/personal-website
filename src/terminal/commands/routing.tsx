@@ -171,6 +171,7 @@ type Action =
   | { type: 'SET_START' }
   | { type: 'SET_END' }
   | { type: 'RESET' }
+  | { type: 'RESTART' }
   | { type: 'ENTER_EDIT' };
 
 function makeInitialState(): GridState {
@@ -262,6 +263,8 @@ function reducer(state: GridState, action: Action): GridState {
       grid.end = [grid.cursor[0], grid.cursor[1]];
       return { ...state, grid };
     }
+    case 'RESTART':
+      return { ...state, search: new Pathfinder(state.grid.size) };
     case 'RESET':
       return makeInitialState();
     case 'ENTER_EDIT':
@@ -377,12 +380,19 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   const hotkeys = useMemo<Hotkey[]>(() => [
     { key: 'q', desc: 'quit', visible: true, fn: () => onExit() },
     {
-      key: 'r', desc: 'reset', visible: true,
-      fn: () => { dispatch({ type: 'RESET' }); setPaused(false); },
+      key: 'r', desc: 'restart', visible: true,
+      fn: () => { dispatch({ type: 'RESTART' }); setPaused(false); setEditMode(false); },
+    },
+    {
+      key: 't', desc: 'reset', visible: true,
+      fn: () => { dispatch({ type: 'RESET' }); setPaused(false); setEditMode(false); },
     },
     {
       key: 'p', desc: paused ? 'unpause' : 'pause', visible: true,
-      fn: () => setPaused(p => !p),
+      fn: () => {
+        setEditMode(false);
+        setPaused(p => !p)
+      },
     },
     {
       key: 'e', desc: `${editMode ? 'exit' : 'enter'} edit mode`, visible: true,
@@ -410,7 +420,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   useEffect(() => {
     const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
     const onKey = (e: KeyboardEvent) => {
-      const handler = handlerMap.get(e.key.toLowerCase());
+      const handler = handlerMap.get(e.key) ?? handlerMap.get(e.key.toLowerCase());
       if (handler) {
         e.preventDefault();
         handler.fn();

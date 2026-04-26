@@ -52,27 +52,32 @@ function cmppair([x1, y1]: Coord, [x2, y2]: Coord): boolean {
 }
 
 function gridNeighbors(x: number, y: number, minX: number, maxX: number, minY: number, maxY: number): Coord[] {
-  const neighbors: Coord[] = [];
-  if (x > minX) {
-    neighbors.push([x - 1, y]);
-  }
-  if (x < maxX) {
-    neighbors.push([x + 1, y]);
-  }
-  if (y > minY) {
-    neighbors.push([x, y - 1]);
-  }
-  if (y < maxY) {
-    neighbors.push([x, y + 1]);
-  }
-  return neighbors;
+  const neighbors: Coord[] = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+    [x - 1, y - 1],
+    [x - 1, y + 1],
+    [x + 1, y + 1],
+    [x + 1, y - 1],
+  ];
+
+  return neighbors.filter(([x, y]) => 
+    x >= minX && x <= maxX && y >= minY && y <= maxY
+  )
 }
 
 function makeInitialState(): GridState {
   const cellTypes: CellTypes = {};
   for (let i = 3; i < 15; i++) {
     cellTypes[coordKey([i, 3])] = BLOCKED;
+  }
+  for (let i = 3; i < 11; i++) {
     cellTypes[coordKey([3, i])] = BLOCKED;
+  }
+  for (let i = 8; i < 14; i++) {
+    cellTypes[coordKey([7, i])] = BLOCKED;
   }
   return {
     toVisit: new MinHeap<Coord>(),
@@ -132,8 +137,8 @@ function reducer(state: GridState, action: Action): GridState {
         const newDist = visited[coordKey(curNode)].dist + arcLen;
         if (!(nKey in visited) || newDist < visited[nKey].dist) {
           visited[nKey] = { pred: curNode, dist: newDist };
-          const est = newDist + dist(neighbor[0], neighbor[1], end[0], end[1]);
-          toVisit.push(est, neighbor);
+          const heuristic = newDist + dist(neighbor[0], neighbor[1], end[0], end[1]);
+          toVisit.push(heuristic, neighbor);
         }
       });
       return { ...state };

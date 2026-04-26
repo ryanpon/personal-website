@@ -174,34 +174,44 @@ type Action =
   | { type: 'RESTART' }
   | { type: 'ENTER_EDIT' };
 
+// S = start, E = end, # = blocked, . = empty. One row per line, one char per cell.
+const initialLayout = [
+  'S...#...............',
+  '....#...#...........',
+  '....#...#...........',
+  '....#...#...........',
+  '....#...#...........',
+  '........#...........',
+  '#####...#...........',
+  '........#...........',
+  '....................',
+  '...############.....',
+  '..........E.........',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+];
+
 function makeInitialState(): GridState {
-  const grid = new Grid(gridSize, [0, 0], [10, 10]);
-  (
-    [
-      [0, 4],
-      [1, 4],
-      [2, 4],
-      [3, 4],
-
-      [7, 3],
-      [7, 4],
-      [7, 5],
-      [7, 6],
-      [7, 7],
-      [7, 8],
-      [7, 9],
-      [7, 10],
-      [7, 11],
-
-      [9, 9],
-      [10, 9],
-      [11, 9],
-
-      [9, 10],
-      [9, 11],
-      [9, 12],
-    ] as Coord[]
-  ).forEach(c => grid.setType(c, 'BLOCKED'));
+  let start: Coord = [0, 0];
+  let end: Coord = [0, 0];
+  const blocks: Coord[] = [];
+  for (let y = 0; y < initialLayout.length; y++) {
+    for (let x = 0; x < initialLayout[y].length; x++) {
+      const ch = initialLayout[y][x];
+      if (ch === 'S') start = [x, y];
+      else if (ch === 'E') end = [x, y];
+      else if (ch === '#') blocks.push([x, y]);
+    }
+  }
+  const grid = new Grid(gridSize, start, end);
+  blocks.forEach(c => grid.setType(c, 'BLOCKED'));
   return { grid, search: new Pathfinder(gridSize) };
 }
 

@@ -10,6 +10,10 @@ function dist(x1, y1, x2, y2) {
   return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
+function cmppair([x1, y1], [x2, y2]) {
+  return x1 === x2 && y1 === y2;
+}
+
 function gridNeighbors(x, y, minX, maxX, minY, maxY) {
   const neighbors = [];
   if (x > minX) {
@@ -55,8 +59,11 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       grid[y][x] = Array.isArray(content) ? content[tick % content.length] : content;
     });
 
-    if (editMode && tick % 2 === 0) {
-      grid[gridState.cursor[1]][gridState.cursor[0]] = '*';
+    if (editMode) {
+      const recentlyMoved = Date.now() - lastCursorMove < 250;
+      if (recentlyMoved || tick % 2 === 0) {
+        grid[gridState.cursor[1]][gridState.cursor[0]] = '*';
+      }
     }
 
     return grid;
@@ -104,11 +111,16 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   const [paused, setPaused] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [tick, setTick] = useState(0);
+  const [lastCursorMove, setLastCursorMove] = useState(Date.now());
 
   useEffect(() => {
     const id = window.setInterval(() => setTick(t => t + 1), 500);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    setLastCursorMove(Date.now());
+  }, [gridState.cursor[0], gridState.cursor[1], editMode]);
 
   function pause() {
     setPaused(true);
@@ -127,7 +139,11 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         if (!(start in visited)) {
           visited[start] = START;
           toVisit.push(0, start);
+        } else if (toVisit.size() === 0) {
+          // We already finished, or didn't find the route
+          return prev;
         }
+
         const [_, curNode] = toVisit.pop();
         const neighbors = gridNeighbors(curNode[0], curNode[1], 0, 19, 0, 19);
         neighbors.forEach(neighbor => {
@@ -229,6 +245,35 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         return {...prev};
       })
     },
+    s: {
+      desc: () => 'set the start locaton',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.start = [...prev.cursor];
+        return {...prev};
+      })
+    },
+    d: {
+      desc: () => 'set the end locaton',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.end = [...prev.cursor];
+        return {...prev};
+      })
+    },
+    a: {
+      desc: () => 'toggle between blocked and unblocked',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        if (prev.cursor in prev.visited) {
+          delete prev.visited[prev.cursor];
+        } else if (!cmppair(prev.cursor, prev.start) && !cmppair(prev.cursor, prev.end)) {
+          prev.visited[prev.cursor] = BLOCKED;
+        }
+        return {...prev};
+      })
+    },
+
   };
   function renderHotkeys() {
     return Object.entries(keypressHandlers).map(([key, {desc}]) => (

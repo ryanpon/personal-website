@@ -28,7 +28,7 @@ function gridNeighbors(x, y, minX, maxX, minY, maxY) {
 }
 
 function RoutingApp({ onExit }: { onExit: AppExit }) {
-  const arraySize = 20;
+  const gridSize = 20;
   const cellSize = 24;
   const emptyVal = '.';
 
@@ -43,9 +43,17 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     );
     const startContent = [...gridState.start, colorSpan('S', colors.purple)];
     const endContent = [...gridState.end, colorSpan('E', colors.purple)];
-    const contentEntries = [...visitedContent, ...pathContent, startContent, endContent]
+    const contentEntries = [
+      ...visitedContent, 
+      ...pathContent, 
+      startContent, 
+      endContent
+    ]
+    if (editMode) {
+      contentEntries.push([...gridState.cursor, '*']);
+    }
 
-    const grid = Array.from({ length: arraySize }, () => new Array(arraySize).fill(emptyVal));
+    const grid = Array.from({ length: gridSize }, () => new Array(gridSize).fill(emptyVal));
     contentEntries.forEach(([x, y, content]) => {
       grid[y][x] = content;
     });
@@ -68,6 +76,26 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       end: [10, 10],
       cursor: [0, 0]
     };
+  }
+
+  function enterEditMode() {
+    setEditMode(true);
+    setPaused(true);
+    setGridState(prev => ({
+      ...prev,
+      path: [],
+      visited: Object.fromEntries(
+        Object
+          .entries(prev.visited)
+          .filter(([k, v]) => v === BLOCKED)
+      ),
+      toVisit: new MinHeap()
+    }));
+  }
+
+  function exitEditMode() {
+    setEditMode(false);
+    setPaused(false);
   }
 
   const [gridState, setGridState] = useState(makeInitialState);
@@ -135,7 +163,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     };
     const id = window.setInterval(refresh, 100);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [paused, gridState]);
 
   const keypressHandlers = {
     q: {
@@ -144,7 +172,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       fn: () => onExit(),
     },
     r: {
-      desc: () => 'restart',
+      desc: () => 'reset',
       visibile: () => true,
       fn: () => {
         setGridState(makeInitialState());
@@ -159,8 +187,41 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     e: {
       desc: () => `${editMode ? 'exit' : 'enter'} edit mode`,
       visible: () => true,
-      fn: () => setEditMode(prev => !prev)
-    }
+      fn: () => editMode ? exitEditMode() : enterEditMode()
+    },
+    arrowdown: {
+      desc: () => 'move down',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.cursor[1] = (prev.cursor[1] + 1) % gridSize;
+        return {...prev};
+      })
+    },
+    arrowup: {
+      desc: () => 'move up',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.cursor[1] = (prev.cursor[1] === 0 ? gridSize : prev.cursor[1]) - 1;
+        return {...prev};
+      })
+    },
+    arrowleft: {
+      desc: () => 'move left',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.cursor[0] = (prev.cursor[0] === 0 ? gridSize : prev.cursor[0]) - 1;
+        console.log(prev.cursor);
+        return {...prev};
+      })
+    },
+    arrowright: {
+      desc: () => 'move right',
+      visible: () => editMode,
+      fn: () => setGridState(prev => {
+        prev.cursor[0] = (prev.cursor[0] + 1) % gridSize;
+        return {...prev};
+      })
+    },
   };
   function renderHotkeys() {
     return Object.entries(keypressHandlers).map(([key, {desc}]) => (
@@ -181,7 +242,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onExit]);
+  }, [onExit, editMode, paused]);
 
   return (
     <div className="terminal-app">
@@ -193,7 +254,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${arraySize}, ${cellSize}px)`,
+          gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
           gridAutoRows: `${cellSize}px`,
           lineHeight: `${cellSize}px`,
           textAlign: "center",

@@ -48,15 +48,17 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       ...pathContent, 
       startContent, 
       endContent
-    ]
-    if (editMode) {
-      contentEntries.push([...gridState.cursor, '*']);
-    }
+    ];
 
     const grid = Array.from({ length: gridSize }, () => new Array(gridSize).fill(emptyVal));
     contentEntries.forEach(([x, y, content]) => {
-      grid[y][x] = content;
+      grid[y][x] = Array.isArray(content) ? content[tick % content.length] : content;
     });
+
+    if (editMode && tick % 2 === 0) {
+      grid[gridState.cursor[1]][gridState.cursor[0]] = '*';
+    }
+
     return grid;
   }
 
@@ -101,6 +103,12 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   const [gridState, setGridState] = useState(makeInitialState);
   const [paused, setPaused] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTick(t => t + 1), 500);
+    return () => window.clearInterval(id);
+  }, []);
 
   function pause() {
     setPaused(true);
@@ -210,7 +218,6 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       visible: () => editMode,
       fn: () => setGridState(prev => {
         prev.cursor[0] = (prev.cursor[0] === 0 ? gridSize : prev.cursor[0]) - 1;
-        console.log(prev.cursor);
         return {...prev};
       })
     },

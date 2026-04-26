@@ -34,10 +34,22 @@ import Terminal from "../components/Terminal.tsx";
 
 	body {
 	    font: 20px/1.5 monospace;
+		margin: 0;
 		background-color: #272822;
 		color: #f8f8f2;
 		font-family: "Maple Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
 			Consolas, monospace;
+	}
+
+	.terminal {
+		width: calc(80ch + 2ch + 2px);
+		max-width: 100%;
+		min-height: 100vh;
+		margin: 0 auto;
+		padding: 8px 1ch;
+		box-sizing: border-box;
+		border-left: 1px solid #3e3d32;
+		border-right: 1px solid #3e3d32;
 	}
 
 	input,
@@ -55,15 +67,6 @@ import Terminal from "../components/Terminal.tsx";
 	.terminal-input-line {
 	  display: flex;
 	  align-items: baseline;
-	}
-
-	.terminal-app {
-	  position: fixed;
-	  inset: 0;
-	  padding: 8px;
-	  background-color: #272822;
-	  overflow: auto;
-	  box-sizing: border-box;
 	}
 
 	.autocomplete-wrapper {

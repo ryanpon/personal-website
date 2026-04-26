@@ -32,6 +32,11 @@ export default function TerminalInput({
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          name="terminal-input"
         />
       </div>
     </div>

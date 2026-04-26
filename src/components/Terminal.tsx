@@ -108,24 +108,27 @@ export default function Terminal() {
     }
   }
 
-  if (activeApp) {
-    const App = activeApp.Component;
-    return <App onExit={exitApp} />;
-  }
+  const App = activeApp?.Component;
 
   return (
-    <div>
-      {lines.map((line, idx) => (
-        <div key={idx}>{line}</div>
-      ))}
-      <TerminalInput
-        value={inputVal}
-        suggestion={suggestion}
-        inputRef={inputRef}
-        onChange={setInput}
-        onKeyDown={handleKeyDown}
-      />
-      <div ref={bottomRef} />
+    <div className="terminal">
+      {App ? (
+        <App onExit={exitApp} />
+      ) : (
+        <>
+          {lines.map((line, idx) => (
+            <div key={idx}>{line}</div>
+          ))}
+          <TerminalInput
+            value={inputVal}
+            suggestion={suggestion}
+            inputRef={inputRef}
+            onChange={setInput}
+            onKeyDown={handleKeyDown}
+          />
+          <div ref={bottomRef} />
+        </>
+      )}
     </div>
   );
 }

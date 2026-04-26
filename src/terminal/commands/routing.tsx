@@ -5,7 +5,7 @@ import { MinHeap } from "../minheap";
 import type { AppExit, Command } from "./types";
 
 const gridSize = 20;
-const cellSize = 24;
+const cellSize = '2.5ch';
 const emptyVal = '·';
 
 type Coord = [number, number];
@@ -349,9 +349,9 @@ function GridView({ state, tick, editMode, forceCursorVisible }: {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${grid.size}, ${cellSize}px)`,
-        gridAutoRows: `${cellSize}px`,
-        lineHeight: `${cellSize}px`,
+        gridTemplateColumns: `repeat(${grid.size}, ${cellSize})`,
+        gridAutoRows: cellSize,
+        lineHeight: cellSize,
         textAlign: "center",
       }}
     >
@@ -466,7 +466,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   }, [hotkeys]);
 
   return (
-    <div className="terminal-app">
+    <>
       <div style={{ color: colors.background, backgroundColor: colors.foreground }}>
         Routing
       </div>
@@ -482,7 +482,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       <div>&nbsp;</div>
 
       <Hotkeys hotkeys={hotkeys} />
-    </div>
+    </>
   );
 }
 

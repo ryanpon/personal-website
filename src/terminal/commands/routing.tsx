@@ -362,6 +362,57 @@ function GridView({ state, tick, editMode, forceCursorVisible }: {
   );
 }
 
+function MetadataBox({ state, paused, editMode }: {
+  state: GridState;
+  paused: boolean;
+  editMode: boolean;
+}) {
+  const nbsp = '\u00A0';
+  const { grid, search } = state;
+  let visited = 0;
+  let closed = 0;
+  search.forEachVisited((_, cell) => {
+    visited++;
+    if (cell.closed) closed++;
+  });
+  const status = editMode
+    ? 'edit'
+    : search.done ? 'done' : paused ? 'paused' : 'running';
+  const fmtCoord = ([x, y]: Coord) =>
+    `(${x.toString().padStart(2)}, ${y.toString().padStart(2)})`;
+
+  const W = 30;
+  const INNER = W - 4;
+  const horiz = '─'.repeat(W - 2);
+
+  function row(label: string, value: string) {
+    const labelPart = label.padEnd(7);
+    const text = `${labelPart} :: ${value}`;
+    const pad = nbsp.repeat(Math.max(0, INNER - text.length));
+    return (
+      <div>│ {colorSpan(labelPart, colors.gray)} :: {value}{pad} │</div>
+    );
+  }
+
+  const blank = <div>│{nbsp.repeat(W - 2)}│</div>;
+
+  return (
+    <div>
+      <div>┌{horiz}┐</div>
+      {row('status', status)}
+      {row('start', fmtCoord(grid.start))}
+      {row('end', fmtCoord(grid.end))}
+      {editMode ? row('cursor', fmtCoord(grid.cursor)) : blank}
+      {blank}
+      {row('visited', visited.toString())}
+      {row('closed', closed.toString())}
+      {row('open', search.toVisit.size().toString())}
+      {row('path', search.path.length.toString())}
+      <div>└{horiz}┘</div>
+    </div>
+  );
+}
+
 const Hotkeys = memo(({ hotkeys }: { hotkeys: Hotkey[] }) => (
   <>
     {hotkeys.filter(h => h.visible).map(h => (
@@ -472,12 +523,19 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       </div>
       <div>&nbsp;</div>
 
-      <GridView
-        state={gridState}
-        tick={tick}
-        editMode={editMode}
-        forceCursorVisible={forceCursorVisible}
-      />
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        <GridView
+          state={gridState}
+          tick={tick}
+          editMode={editMode}
+          forceCursorVisible={forceCursorVisible}
+        />
+        <MetadataBox
+          state={gridState}
+          paused={paused}
+          editMode={editMode}
+        />
+      </div>
 
       <div>&nbsp;</div>
 

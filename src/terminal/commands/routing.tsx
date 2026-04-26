@@ -4,28 +4,162 @@ import { colorSpan, colors } from "../colors";
 import { MinHeap } from "../minheap";
 import type { AppExit, Command } from "./types";
 
-const BLOCKED = Symbol('BLOCKED');
-const START = Symbol('START');
-
 const gridSize = 20;
 const cellSize = 24;
 const emptyVal = '.';
 
 type Coord = [number, number];
-type VisitedValue = { pred: Coord | null, dist: number };
-type Visited = Record<string, VisitedValue>;
-type CellTypes = Record<string, Symbol>;
+type CellType = 'EMPTY' | 'BLOCKED';
 
-type GridState = {
-  toVisit: MinHeap<Coord>;
-  visited: Visited;
-  closed: Record<string, boolean>,
-  cellTypes: Record<string, Symbol>;
-  path: Coord[];
+type SearchCell = {
+  pred: Coord | null;
+  dist: number;
+  visited: boolean;
+  closed: boolean;
+};
+
+function dist([x1, y1]: Coord, [x2, y2]: Coord): number {
+  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+}
+
+function cmppair([x1, y1]: Coord, [x2, y2]: Coord): boolean {
+  return x1 === x2 && y1 === y2;
+}
+
+class Grid {
+  readonly size: number;
   start: Coord;
   end: Coord;
   cursor: Coord;
+  private types: CellType[][];
+
+  constructor(size: number, start: Coord, end: Coord) {
+    this.size = size;
+    this.start = start;
+    this.end = end;
+    this.cursor = [start[0], start[1]];
+    this.types = Array.from({ length: size }, () =>
+      new Array<CellType>(size).fill('EMPTY'),
+    );
+  }
+
+  inBounds([x, y]: Coord): boolean {
+    return x >= 0 && x < this.size && y >= 0 && y < this.size;
+  }
+
+  getType([x, y]: Coord): CellType {
+    return this.types[y][x];
+  }
+
+  setType([x, y]: Coord, type: CellType): void {
+    this.types[y][x] = type;
+  }
+
+  isBlocked(c: Coord): boolean {
+    return this.getType(c) === 'BLOCKED';
+  }
+
+  toggleBlock(c: Coord): void {
+    if (this.isBlocked(c)) {
+      this.setType(c, 'EMPTY');
+    } else if (!cmppair(c, this.start) && !cmppair(c, this.end)) {
+      this.setType(c, 'BLOCKED');
+    }
+  }
+
+  moveCursor(dx: number, dy: number): void {
+    this.cursor = [
+      (this.cursor[0] + dx + this.size) % this.size,
+      (this.cursor[1] + dy + this.size) % this.size,
+    ];
+  }
+
+  neighbors([x, y]: Coord): Coord[] {
+    const candidates: Coord[] = [
+      [x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1],
+      [x - 1, y - 1], [x - 1, y + 1], [x + 1, y + 1], [x + 1, y - 1],
+    ];
+    return candidates.filter(c => this.inBounds(c));
+  }
+
+  forEachBlocked(fn: (c: Coord) => void): void {
+    for (let y = 0; y < this.size; y++) {
+      for (let x = 0; x < this.size; x++) {
+        if (this.types[y][x] === 'BLOCKED') fn([x, y]);
+      }
+    }
+  }
+
+  clone(): Grid {
+    const g = new Grid(this.size, [this.start[0], this.start[1]], [this.end[0], this.end[1]]);
+    g.cursor = [this.cursor[0], this.cursor[1]];
+    g.types = this.types.map(row => row.slice());
+    return g;
+  }
+}
+
+class Pathfinder {
+  readonly size: number;
+  toVisit: MinHeap<Coord>;
+  path: Coord[];
   done: boolean;
+  private cells: SearchCell[][];
+
+  constructor(size: number) {
+    this.size = size;
+    this.toVisit = new MinHeap<Coord>();
+    this.path = [];
+    this.done = false;
+    this.cells = Array.from({ length: size }, () =>
+      Array.from({ length: size }, () => ({ pred: null, dist: 0, visited: false, closed: false })),
+    );
+  }
+
+  get([x, y]: Coord): SearchCell {
+    return this.cells[y][x];
+  }
+
+  isVisited(c: Coord): boolean {
+    return this.get(c).visited;
+  }
+
+  isClosed(c: Coord): boolean {
+    return this.get(c).closed;
+  }
+
+  visit(c: Coord, pred: Coord | null, distance: number): void {
+    const cell = this.cells[c[1]][c[0]];
+    cell.visited = true;
+    cell.pred = pred;
+    cell.dist = distance;
+  }
+
+  close(c: Coord): void {
+    this.cells[c[1]][c[0]].closed = true;
+  }
+
+  forEachVisited(fn: (c: Coord, cell: SearchCell) => void): void {
+    for (let y = 0; y < this.size; y++) {
+      for (let x = 0; x < this.size; x++) {
+        const cell = this.cells[y][x];
+        if (cell.visited) fn([x, y], cell);
+      }
+    }
+  }
+
+  clone(): Pathfinder {
+    const p = new Pathfinder(this.size);
+    p.toVisit = this.toVisit.clone();
+    p.path = this.path.slice();
+    p.done = this.done;
+    p.cells = this.cells.map(row => row.map(c => ({ ...c })));
+    return p;
+  }
+}
+
+type GridState = {
+  grid: Grid;
+  search: Pathfinder;
 };
 
 type Action =
@@ -39,167 +173,99 @@ type Action =
   | { type: 'RESET' }
   | { type: 'ENTER_EDIT' };
 
-function coordKey(c: Coord): string {
-  return `${c[0]},${c[1]}`;
-}
-
-function dist([x1, y1]: Coord, [x2, y2]: Coord): number {
-  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-}
-
-function cmppair([x1, y1]: Coord, [x2, y2]: Coord): boolean {
-  return x1 === x2 && y1 === y2;
-}
-
-function gridNeighbors(x: number, y: number, minX: number, maxX: number, minY: number, maxY: number): Coord[] {
-  const neighbors: Coord[] = [
-    [x - 1, y],
-    [x + 1, y],
-    [x, y - 1],
-    [x, y + 1],
-    [x - 1, y - 1],
-    [x - 1, y + 1],
-    [x + 1, y + 1],
-    [x + 1, y - 1],
-  ];
-
-  return neighbors.filter(([x, y]) => 
-    x >= minX && x <= maxX && y >= minY && y <= maxY
-  )
-}
-
 function makeInitialState(): GridState {
-  const cellTypes: CellTypes = {};
-  [
-    [5, 3],
-    [5, 4],
-    [5, 5],
-    [3, 5],
-    [4, 5],
-    [5, 5],
-  ].forEach(([x, y]) => cellTypes[coordKey([x, y])] = BLOCKED)
-
-  // for (let i = 3; i < 15; i++) {
-  //   cellTypes[coordKey([i, 3])] = BLOCKED;
-  // }
-  // for (let i = 3; i < 11; i++) {
-  //   cellTypes[coordKey([3, i])] = BLOCKED;
-  // }
-  // for (let i = 8; i < 14; i++) {
-  //   cellTypes[coordKey([7, i])] = BLOCKED;
-  // }
-  return {
-    toVisit: new MinHeap<Coord>(),
-    visited: {},
-    closed: {},
-    cellTypes,
-    path: [],
-    start: [0, 0],
-    end: [10, 10],
-    cursor: [0, 0],
-    done: false,
-  };
+  const grid = new Grid(gridSize, [0, 0], [10, 10]);
+  ([[5, 3], [5, 4], [5, 5], [3, 5], [4, 5]] as Coord[]).forEach(c => grid.setType(c, 'BLOCKED'));
+  return { grid, search: new Pathfinder(gridSize) };
 }
 
 function reducer(state: GridState, action: Action): GridState {
   switch (action.type) {
     case 'TICK': {
-      if (state.done) return state;
-      if (coordKey(state.end) in state.visited) {
+      if (state.search.done) return state;
+      if (state.search.isVisited(state.grid.end)) {
         return reducer(state, { type: 'HIGHLIGHT_STEP' });
       }
       return reducer(state, { type: 'STEP' });
     }
     case 'STEP': {
-      const { start, end, cellTypes } = state;
-      const visited: Visited = { ...state.visited };
-      const closed: Record<string, boolean> = { ...state.closed };
-      const toVisit = state.toVisit.clone();
+      const { grid } = state;
+      const { start, end } = grid;
+      const search = state.search.clone();
 
-      if (!(coordKey(start) in visited)) {
-        visited[coordKey(start)] = { pred: null, dist: 0 };
-        toVisit.push(dist(start, end), start);
-      } else if (toVisit.size() === 0) {
+      if (!search.isVisited(start)) {
+        search.visit(start, null, 0);
+        search.toVisit.push(dist(start, end), start);
+      } else if (search.toVisit.size() === 0) {
         return state;
       }
-      // we need to pop until we find something not in closed set
-      let curNode = null;
-      while (toVisit.size() > 0) {
-        const popped = toVisit.pop();
+      // we need to pop until we find something not in the closed set
+      let curNode: Coord | null = null;
+      while (search.toVisit.size() > 0) {
+        const popped = search.toVisit.pop();
         if (!popped) return state;
 
-        const [, candidateNode] = popped;
-        if (!(coordKey(candidateNode) in closed)) {
-          curNode = candidateNode;
+        const [, candidate] = popped;
+        if (!search.isClosed(candidate)) {
+          curNode = candidate;
           break;
         }
       }
       if (!curNode) return state;
 
-      closed[coordKey(curNode)] = true;
+      search.close(curNode);
+      const curDist = search.get(curNode).dist;
 
-      const neighbors = gridNeighbors(curNode[0], curNode[1], 0, gridSize - 1, 0, gridSize - 1);
-      neighbors.forEach(neighbor => {
-        const nKey = coordKey(neighbor);
-        if (nKey in closed) return;
-        if (nKey in cellTypes) return;
+      for (const neighbor of grid.neighbors(curNode)) {
+        if (search.isClosed(neighbor)) continue;
+        if (grid.isBlocked(neighbor)) continue;
 
         const arcLen = dist(neighbor, curNode);
-        const newDist = visited[coordKey(curNode)].dist + arcLen;
-        if (!(nKey in visited) || newDist < visited[nKey].dist) {
-          visited[nKey] = { pred: curNode, dist: newDist };
-          const heuristic = newDist + dist(neighbor, end);
-          toVisit.push(heuristic, neighbor);
+        const newDist = curDist + arcLen;
+        const ncell = search.get(neighbor);
+        if (!ncell.visited || newDist < ncell.dist) {
+          search.visit(neighbor, curNode, newDist);
+          search.toVisit.push(newDist + dist(neighbor, end), neighbor);
         }
-      });
-      return { ...state, visited, closed, toVisit };
+      }
+      return { ...state, search };
     }
     case 'HIGHLIGHT_STEP': {
-      const { path, start, end, visited } = state;
-      const last = path.at(-1);
-      if (last && cmppair(last, start)) {
-        return { ...state, done: true };
+      const { grid } = state;
+      const search = state.search.clone();
+      const last = search.path.at(-1);
+      if (last && cmppair(last, grid.start)) {
+        search.done = true;
+        return { ...state, search };
       }
-      const next = path.length === 0 ? end : visited[coordKey(path.at(-1)!)].pred as Coord;
-      return { ...state, path: [...path, next] };
+      const next = last ? search.get(last).pred as Coord : grid.end;
+      search.path = [...search.path, next];
+      return { ...state, search };
     }
     case 'MOVE_CURSOR': {
-      const [cx, cy] = state.cursor;
-      return {
-        ...state,
-        cursor: [
-          (cx + action.dx + gridSize) % gridSize,
-          (cy + action.dy + gridSize) % gridSize,
-        ],
-      };
+      const grid = state.grid.clone();
+      grid.moveCursor(action.dx, action.dy);
+      return { ...state, grid };
     }
     case 'TOGGLE_BLOCK': {
-      const cellTypes: CellTypes = { ...state.cellTypes };
-      const key = coordKey(state.cursor);
-      if (key in cellTypes) {
-        delete cellTypes[key];
-      } else if (!cmppair(state.cursor, state.start) && !cmppair(state.cursor, state.end)) {
-        cellTypes[key] = BLOCKED;
-      }
-      return { ...state, cellTypes };
+      const grid = state.grid.clone();
+      grid.toggleBlock(grid.cursor);
+      return { ...state, grid };
     }
-    case 'SET_START':
-      return { ...state, start: [...state.cursor] };
-    case 'SET_END':
-      return { ...state, end: [...state.cursor] };
+    case 'SET_START': {
+      const grid = state.grid.clone();
+      grid.start = [grid.cursor[0], grid.cursor[1]];
+      return { ...state, grid };
+    }
+    case 'SET_END': {
+      const grid = state.grid.clone();
+      grid.end = [grid.cursor[0], grid.cursor[1]];
+      return { ...state, grid };
+    }
     case 'RESET':
       return makeInitialState();
-    case 'ENTER_EDIT': {
-      const visited: Visited = {};
-      return { 
-        ...state, 
-        path: [], 
-        visited,
-        closed: {}, 
-        toVisit: new MinHeap<Coord>(), 
-        done: false 
-      };
-    }
+    case 'ENTER_EDIT':
+      return { ...state, search: new Pathfinder(state.grid.size) };
   }
 }
 
@@ -213,53 +279,45 @@ type Hotkey = {
 type Cell = ReactNode | ReactNode[];
 type ContentEntry = [number, number, Cell];
 
-function Grid({ gridState, tick, editMode, forceCursorVisible }: {
-  gridState: GridState;
+function GridView({ state, tick, editMode, forceCursorVisible }: {
+  state: GridState;
   tick: number;
   editMode: boolean;
   forceCursorVisible: boolean;
 }) {
+  const { grid, search } = state;
   const entries: ContentEntry[] = [];
-  for (const [key, cellType] of Object.entries(gridState.cellTypes)) {
-    const [xStr, yStr] = key.split(",");
-    if (cellType === BLOCKED) {
-      entries.push([parseInt(xStr), parseInt(yStr), "█"]);
-    }
-  }
-  for (const [key,] of Object.entries(gridState.visited)) {
-    const [xStr, yStr] = key.split(",");
-    entries.push([parseInt(xStr), parseInt(yStr), ","]);
-  }
-  for (const [key,] of Object.entries(gridState.closed)) {
-    const [xStr, yStr] = key.split(",");
-    entries.push([parseInt(xStr), parseInt(yStr), "o"]);
-  }
-  for (const [x, y] of gridState.path) {
+
+  grid.forEachBlocked(([x, y]) => entries.push([x, y, "█"]));
+  search.forEachVisited(([x, y], cell) => {
+    entries.push([x, y, cell.closed ? "o" : ","]);
+  });
+  for (const [x, y] of search.path) {
     entries.push([x, y, colorSpan('x', colors.lightPurple)]);
   }
-  entries.push([gridState.start[0], gridState.start[1], colorSpan('S', colors.purple)]);
-  entries.push([gridState.end[0], gridState.end[1], colorSpan('E', colors.purple)]);
+  entries.push([grid.start[0], grid.start[1], colorSpan('S', colors.purple)]);
+  entries.push([grid.end[0], grid.end[1], colorSpan('E', colors.purple)]);
 
-  const grid: Cell[][] = Array.from({ length: gridSize }, () => new Array(gridSize).fill(emptyVal));
+  const cells: Cell[][] = Array.from({ length: grid.size }, () => new Array(grid.size).fill(emptyVal));
   for (const [x, y, content] of entries) {
-    grid[y][x] = Array.isArray(content) ? content[tick % content.length] : content;
+    cells[y][x] = Array.isArray(content) ? content[tick % content.length] : content;
   }
 
   if (editMode && (forceCursorVisible || tick % 2 === 0)) {
-    grid[gridState.cursor[1]][gridState.cursor[0]] = '*';
+    cells[grid.cursor[1]][grid.cursor[0]] = '*';
   }
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
+        gridTemplateColumns: `repeat(${grid.size}, ${cellSize}px)`,
         gridAutoRows: `${cellSize}px`,
         lineHeight: `${cellSize}px`,
         textAlign: "center",
       }}
     >
-      {grid.flat().map((cell, idx) => (
+      {cells.flat().map((cell, idx) => (
         <span key={idx}>{cell}</span>
       ))}
     </div>
@@ -307,8 +365,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   }, []);
 
   useEffect(() => {
-    if (gridState.done) setPaused(true);
-  }, [gridState.done]);
+    if (gridState.search.done) setPaused(true);
+  }, [gridState.search.done]);
 
   useEffect(() => {
     if (paused) return;
@@ -369,8 +427,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
       </div>
       <div>&nbsp;</div>
 
-      <Grid
-        gridState={gridState}
+      <GridView
+        state={gridState}
         tick={tick}
         editMode={editMode}
         forceCursorVisible={forceCursorVisible}

@@ -30,14 +30,26 @@ function gridNeighbors(x, y, minX, maxX, minY, maxY) {
 function RoutingApp({ onExit }: { onExit: AppExit }) {
   const arraySize = 20;
   const cellSize = 24;
+  const emptyVal = '.';
 
-
-  function renderGrid(contentEntries, emptyVal = '.') {
-    const initialGrid = Array.from({ length: arraySize }, () => new Array(arraySize).fill(emptyVal));
-    contentEntries.forEach(([x, y, content]) => {
-      initialGrid[y][x] = content;
+  function renderGrid() {
+    const visitedContent = Object.entries(gridState.visited).map(([key, value]) => {
+      const [xStr, yStr] = key.split(",");
+      const content = value === BLOCKED ? "█" : "o";
+      return [parseInt(xStr), parseInt(yStr), content];
     });
-    return initialGrid;
+    const pathContent = gridState.path.map(([x, y]) =>
+      [x, y, colorSpan('x', colors.lightPurple)]
+    );
+    const startContent = [...gridState.start, colorSpan('S', colors.purple)];
+    const endContent = [...gridState.end, colorSpan('E', colors.purple)];
+    const contentEntries = [...visitedContent, ...pathContent, startContent, endContent]
+
+    const grid = Array.from({ length: arraySize }, () => new Array(arraySize).fill(emptyVal));
+    contentEntries.forEach(([x, y, content]) => {
+      grid[y][x] = content;
+    });
+    return grid;
   }
 
   function makeInitialState() {
@@ -49,9 +61,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     }
 
     return {
-      grid: renderGrid([]),
       toVisit: new MinHeap(),
-      visited,
+      visited: visited,
       path: [],
       start: [0, 0],
       end: [10, 10],
@@ -69,20 +80,6 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
   function unpause() {
     setPaused(false);
-  }
-
-  function buildGrid(visited, start, end, path = []) {
-    const visitedContent = Object.entries(visited).map(([key, value]) => {
-      const [xStr, yStr] = key.split(",");
-      const content = value === BLOCKED ? "█" : "o";
-      return [parseInt(xStr), parseInt(yStr), content];
-    });
-    const pathContent = path.map(([x, y]) =>
-      [x, y, colorSpan('x', colors.lightPurple)]
-    );
-    const startContent = [...start, colorSpan('S', colors.purple)];
-    const endContent = [...end, colorSpan('E', colors.purple)];
-    return renderGrid([...visitedContent, ...pathContent, startContent, endContent]);
   }
 
   useEffect(() => {
@@ -105,10 +102,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           toVisit.push(dist(nX, nY, end[0], end[1]), neighbor)
         });
 
-        return {
-          ...prev,
-          grid: buildGrid(visited, start, end),
-        };
+        return {...prev};
       }
 
       function runRouteHighlight(prev) {
@@ -123,11 +117,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           path.push(visited[path.at(-1)]);
         }
 
-        return {
-          ...prev,
-          grid: buildGrid(visited, start, end, path),
-          path,
-        };
+        return {...prev};
       }
 
       setGridState(prev => {
@@ -209,7 +199,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           textAlign: "center",
         }}
       >
-        {gridState.grid.flat().map((cell, idx) => (
+        {renderGrid().flat().map((cell, idx) => (
           <span key={idx}>{cell}</span>
         ))}
       </div>

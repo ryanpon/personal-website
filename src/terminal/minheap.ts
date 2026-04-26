@@ -28,6 +28,12 @@ export class MinHeap<T = unknown> {
     return this.heap.length;
   }
 
+  clone(): MinHeap<T> {
+    const copy = new MinHeap<T>();
+    copy.heap = this.heap.slice();
+    return copy;
+  }
+
   private _bubbleUp(i: number): void {
     while (i > 0) {
       const parent = Math.floor((i - 1) / 2);

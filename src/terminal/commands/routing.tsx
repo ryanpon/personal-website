@@ -43,7 +43,7 @@ function coordKey(c: Coord): string {
   return `${c[0]},${c[1]}`;
 }
 
-function dist(x1: number, y1: number, x2: number, y2: number): number {
+function dist([x1, y1]: Coord, [x2, y2]: Coord): number {
   return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
 }
 
@@ -70,15 +70,24 @@ function gridNeighbors(x: number, y: number, minX: number, maxX: number, minY: n
 
 function makeInitialState(): GridState {
   const cellTypes: CellTypes = {};
-  for (let i = 3; i < 15; i++) {
-    cellTypes[coordKey([i, 3])] = BLOCKED;
-  }
-  for (let i = 3; i < 11; i++) {
-    cellTypes[coordKey([3, i])] = BLOCKED;
-  }
-  for (let i = 8; i < 14; i++) {
-    cellTypes[coordKey([7, i])] = BLOCKED;
-  }
+  [
+    [5, 3],
+    [5, 4],
+    [5, 5],
+    [3, 5],
+    [4, 5],
+    [5, 5],
+  ].forEach(([x, y]) => cellTypes[coordKey([x, y])] = BLOCKED)
+
+  // for (let i = 3; i < 15; i++) {
+  //   cellTypes[coordKey([i, 3])] = BLOCKED;
+  // }
+  // for (let i = 3; i < 11; i++) {
+  //   cellTypes[coordKey([3, i])] = BLOCKED;
+  // }
+  // for (let i = 8; i < 14; i++) {
+  //   cellTypes[coordKey([7, i])] = BLOCKED;
+  // }
   return {
     toVisit: new MinHeap<Coord>(),
     visited: {},
@@ -102,10 +111,14 @@ function reducer(state: GridState, action: Action): GridState {
       return reducer(state, { type: 'STEP' });
     }
     case 'STEP': {
-      const { start, end, toVisit, visited, closed, cellTypes } = state;
+      const { start, end, cellTypes } = state;
+      const visited: Visited = { ...state.visited };
+      const closed: Record<string, boolean> = { ...state.closed };
+      const toVisit = state.toVisit.clone();
+
       if (!(coordKey(start) in visited)) {
         visited[coordKey(start)] = { pred: null, dist: 0 };
-        toVisit.push(0, start);
+        toVisit.push(dist(start, end), start);
       } else if (toVisit.size() === 0) {
         return state;
       }
@@ -127,21 +140,19 @@ function reducer(state: GridState, action: Action): GridState {
 
       const neighbors = gridNeighbors(curNode[0], curNode[1], 0, gridSize - 1, 0, gridSize - 1);
       neighbors.forEach(neighbor => {
-        // arcs are all the same for now
-        const arcLen = 1; 
         const nKey = coordKey(neighbor);
         if (nKey in closed) return;
-        // assume these are all blocked for now
         if (nKey in cellTypes) return;
 
+        const arcLen = dist(neighbor, curNode);
         const newDist = visited[coordKey(curNode)].dist + arcLen;
         if (!(nKey in visited) || newDist < visited[nKey].dist) {
           visited[nKey] = { pred: curNode, dist: newDist };
-          const heuristic = newDist + dist(neighbor[0], neighbor[1], end[0], end[1]);
+          const heuristic = newDist + dist(neighbor, end);
           toVisit.push(heuristic, neighbor);
         }
       });
-      return { ...state };
+      return { ...state, visited, closed, toVisit };
     }
     case 'HIGHLIGHT_STEP': {
       const { path, start, end, visited } = state;

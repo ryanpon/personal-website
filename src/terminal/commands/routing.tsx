@@ -7,6 +7,9 @@ import type { AppExit, Command } from "./types";
 const gridSize = 20;
 const cellSize = '2.5ch';
 const emptyVal = '·';
+const lowInterval = 200;
+const medInterval = 100;
+const highInterval = 50;
 
 type Coord = [number, number];
 type CellType = 'EMPTY' | 'BLOCKED';
@@ -362,12 +365,12 @@ function GridView({ state, tick, editMode, forceCursorVisible }: {
   );
 }
 
-function MetadataBox({ state, paused, editMode }: {
+function MetadataBox({ state, paused, editMode, speed }: {
   state: GridState;
   paused: boolean;
   editMode: boolean;
+  speed: number;
 }) {
-  const nbsp = '\u00A0';
   const { grid, search } = state;
   let visited = 0;
   let closed = 0;
@@ -388,26 +391,45 @@ function MetadataBox({ state, paused, editMode }: {
   function row(label: string, value: string) {
     const labelPart = label.padEnd(7);
     const text = `${labelPart} :: ${value}`;
-    const pad = nbsp.repeat(Math.max(0, INNER - text.length));
+    const pad = ' '.repeat(Math.max(0, INNER - text.length));
     return (
       <div>│ {colorSpan(labelPart, colors.gray)} :: {value}{pad} │</div>
     );
   }
 
-  const blank = <div>│{nbsp.repeat(W - 2)}│</div>;
+  const padding = <div>{' '.repeat(W)}</div>
+  const blank = <div>│{' '.repeat(W - 2)}│</div>;
+
+  const speedMarker = '▲';
+  const sliderArr = Array.from({ length: W - 4 }, () => '-');
+  if (speed === medInterval) {
+    sliderArr[13] = speedMarker;
+  } else if (speed === lowInterval) {
+    sliderArr[0] = speedMarker;
+  } else {
+    sliderArr[25] = speedMarker;
+  }
+
+  const speedSlider = <div>│ {sliderArr.join('')} │</div>;
 
   return (
-    <div>
+    <div style={{ whiteSpace: 'pre' }}>
+      {padding}
       <div>┌{horiz}┐</div>
       {row('status', status)}
       {row('start', fmtCoord(grid.start))}
       {row('end', fmtCoord(grid.end))}
-      {editMode ? row('cursor', fmtCoord(grid.cursor)) : blank}
       {blank}
-      {row('visited', visited.toString())}
       {row('closed', closed.toString())}
       {row('open', search.toVisit.size().toString())}
       {row('path', search.path.length.toString())}
+      {blank}
+      <div>│Speed                       │</div>
+      {speedSlider}
+      <div>│ Low         Med         Hi │</div>
+      {blank}
+      {blank}
+      {blank}
       <div>└{horiz}┘</div>
     </div>
   );
@@ -430,6 +452,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   const [tick, setTick] = useState(0);
   const [forceCursorVisible, setForceCursorVisible] = useState(false);
   const cursorTimeoutRef = useRef<number | null>(null);
+  const [pathfinderInterval, setPathfindingInterval] = useState(medInterval);
 
   const flashCursor = useCallback(() => {
     setForceCursorVisible(true);
@@ -459,9 +482,9 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
 
   useEffect(() => {
     if (paused) return;
-    const id = window.setInterval(() => dispatch({ type: 'TICK' }), 100);
+    const id = window.setInterval(() => dispatch({ type: 'TICK' }), pathfinderInterval);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [paused, pathfinderInterval]);
 
   const hotkeys = useMemo<Hotkey[]>(() => [
     { key: 'q', desc: 'quit', visible: true, fn: () => onExit() },
@@ -479,6 +502,20 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
         setEditMode(false);
         setPaused(p => !p)
       },
+    },
+    {
+      key: 'o', 
+      desc: 'change animation speed',
+      visible: true,
+      fn: () => {
+        if (pathfinderInterval === medInterval) {
+          setPathfindingInterval(highInterval);
+        } else if (pathfinderInterval === lowInterval) {
+          setPathfindingInterval(medInterval);
+        } else {
+          setPathfindingInterval(lowInterval);
+        }
+      }
     },
     {
       key: 'e', desc: `${editMode ? 'exit' : 'enter'} edit mode`, visible: true,
@@ -501,7 +538,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     { key: 's', desc: 'set the start location', visible: editMode, fn: () => dispatch({ type: 'SET_START' }) },
     { key: 'd', desc: 'set the end location', visible: editMode, fn: () => dispatch({ type: 'SET_END' }) },
     { key: 'b', desc: 'toggle between blocked and unblocked', visible: editMode, fn: () => dispatch({ type: 'TOGGLE_BLOCK' }) },
-  ], [onExit, editMode, paused, flashCursor]);
+  ], [onExit, editMode, paused, flashCursor, pathfinderInterval]);
 
   useEffect(() => {
     const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
@@ -534,6 +571,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           state={gridState}
           paused={paused}
           editMode={editMode}
+          speed={pathfinderInterval}
         />
       </div>
 

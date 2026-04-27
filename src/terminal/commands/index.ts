@@ -1,12 +1,14 @@
 import { helpCommand } from "./help";
 import { resumeCommand } from "./resume";
 import { routingCommand } from "./routing";
+import { snakeCommand } from "./snake";
 import type { Command, CommandResult } from "./types";
 
 export const commands: Record<string, Command> = {
   [helpCommand.name]: helpCommand,
   [resumeCommand.name]: resumeCommand,
   [routingCommand.name]: routingCommand,
+  [snakeCommand.name]: snakeCommand,
 };
 
 export const commandNames = Object.keys(commands);

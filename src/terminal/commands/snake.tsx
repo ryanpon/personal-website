@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } f
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
+import { pad } from "../helpers";
 
 const gridSize = 18;
 const cellSize = '2ch';
@@ -34,7 +35,7 @@ type Action =
 type Hotkey = {
   key: string;
   desc: string;
-  fn: () => void;
+  dispatchAction: Action;
 };
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -155,20 +156,36 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
 
   const hotkeys = useMemo<Hotkey[]>(() => [
     {
-      key: 'r', desc: 'restart', visible: true,
-      fn: () => { dispatch({ type: 'RESTART' }); },
+      key: 'r', 
+      desc: 'restart', 
+      dispatchAction: { type: 'RESTART' },
     },
     {
       key: 'p', 
       desc: gameState.tickInterval === pausedInterval ? 'pause' : 'unpause', 
-      visible: true,
-      fn: () => dispatch({ type: 'TOGGLE_PAUSE' }),
+      dispatchAction: { type: 'TOGGLE_PAUSE' },
     },
-    { key: 'arrowdown', desc: 'move down', visible: true, fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'down' }) },
-    { key: 'arrowup', desc: 'move up', visible: true, fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'up' }) },
-    { key: 'arrowleft', desc: 'move left', visible: true, fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'left' }) },
-    { key: 'arrowright', desc: 'move right', visible: true, fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'right' }) },
-  ], [gameState]);
+    { 
+      key: 'arrowdown', 
+      desc: 'move down', 
+      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'down' },
+    },
+    { 
+      key: 'arrowup', 
+      desc: 'move up', 
+      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'up' },
+    },
+    { 
+      key: 'arrowleft', 
+      desc: 'move left', 
+      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'left' },
+    },
+    { 
+      key: 'arrowright', 
+      desc: 'move right', 
+      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'right' },
+    },
+  ], [gameState.tickInterval]);
 
   useEffect(() => {
     const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
@@ -176,7 +193,7 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
       const handler = handlerMap.get(e.key) ?? handlerMap.get(e.key.toLowerCase());
       if (handler) {
         e.preventDefault();
-        handler.fn();
+        dispatch(handler.dispatchAction);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -184,10 +201,11 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   }, [hotkeys]);
 
   useEffect(() => {
-    // if (paused) return;
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), gameState.tickInterval);
     return () => window.clearInterval(id);
-  }, [gameState]);
+  }, [gameState.tickInterval]);
+
+  const len = pad(gameState.snake.length, 3, true);
 
   return (
     <>
@@ -200,11 +218,21 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
         <GridView
           state={gameState}
         />
+        <div style={{ whiteSpace: 'pre' }}>
+          {
+            [
+              " ┌──────────────┐",
+              ` │ Length: ${len}  │`,
+              " │              │",
+              " │              │",
+              " └──────────────┘",
+            ].map((cell, idx) => <div key={idx}>{cell}</div>)
+          }
+        </div>
       </div>
 
       <div>&nbsp;</div>
-
-      {/*<Hotkeys hotkeys={hotkeys} />*/}
+      <div>Arrow keys to move, r to restart, p to pause.</div>
     </>
   );
 }

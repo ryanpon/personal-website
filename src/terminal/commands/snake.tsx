@@ -39,6 +39,13 @@ type Hotkey = {
   fn?: Function;
 };
 
+const dirOpposites: Record<Direction, Direction> = {
+  up: 'down',
+  down: 'up',
+  left: 'right',
+  right: 'left',
+}
+
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 function inBounds([x, y]: Coord): boolean {
@@ -57,6 +64,19 @@ function speedOffset(growth: number): number {
     }
   }
   return intervalOffset;
+}
+
+function dir([x1, y1]: Coord, [x2, y2]: Coord): Direction {
+  if (x1 < x2) {
+    return 'right';
+  }
+  if (x1 > x2) {
+    return 'left';
+  }
+  if (y1 < y2) {
+    return 'down';
+  }
+  return 'up';
 }
 
 function nextCell([x, y]: Coord, dir: Direction): Coord {
@@ -87,6 +107,12 @@ function linearCoord([x, y]: Coord) {
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'TICK': {
+      // const maybeNext = nextCell(state.head, state.dir);
+      // // don't allow moving into the snake body
+      // const fixedDir = cmppair(maybeNext, state.snake.at(-2) ?? [0,0]) ?
+      //   dir(state.snake.at(-2) ?? [0,0], state.snake.at(-1) ?? [0,0]) :
+      //   state.dir;
+      // console.log(fixedDir, state.dir);
       const next = nextCell(state.head, state.dir);
       const nextHasFood = cmppair(next, state.food);
       const body = state.snake.slice(nextHasFood ? 0 : 1);
@@ -102,7 +128,13 @@ function reducer(state: GameState, action: Action): GameState {
       }
 
       const tickInterval = initialInterval - speedOffset(state.snake.length - 3);
-      const nextState = {...state, snake, head: next, food, tickInterval};
+      const nextState = {
+        ...state,
+        snake,
+        head: next,
+        food,
+        tickInterval
+      };
       if (!inBounds(next) || state.snake.some(crd => cmppair(crd, next))) {
         return reducer(nextState, { type: 'LOSE' });
       }
@@ -111,6 +143,10 @@ function reducer(state: GameState, action: Action): GameState {
     }
     case 'INPUT_DIRECTION': {
       const {dir} = action;
+      if (dir === dirOpposites[state.dir]) {
+        // prevents losing by u-turning into the body
+        return state;
+      }
       return {...state, dir};
     }
     case 'RESTART': {
@@ -146,13 +182,58 @@ function initialState(): GameState {
   }
 }
 
+function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
+  const segVert = '║';
+  const segHori = '═';
+  const segDownRight = '╔';
+  const segDownLeft = '╗';
+  const segUpRight = '╚';
+  const segUpLeft = '╝';
+
+  const segments: Record<Direction, Record<Direction, string>> = {
+    left: {
+      left: segHori,
+      right: segHori,
+      up: segUpRight,
+      down: segDownRight,
+    },
+    right: {
+      left: segHori,
+      right: segHori,
+      up: segUpLeft,
+      down: segDownLeft,
+    },
+    up: {
+      left: segDownLeft,
+      right: segDownRight,
+      up: segVert,
+      down: segVert,
+    },
+    down: {
+      left: segUpLeft,
+      right: segUpRight,
+      up: segVert,
+      down: segVert,
+    }
+  };
+
+  const firstDir = dir(pCrd, crd);
+  const secondDir = dir(crd, nCrd);
+  return segments[firstDir][secondDir];
+}
+
 function GridView({ state }: {
   state: GameState;
 }) {
   const cells: Array<string|ReactNode> = new Array(gridSize ** 2).fill('.');
+  cells[linearCoord(state.snake[0])] = 'o';
 
-  for (const coord of state.snake) {
-    cells[linearCoord(coord)] = 'o';
+  let prevCoord: Coord | null = state.snake[0];
+  let coord: Coord | null = state.snake[1];
+  for (const nextCoord of state.snake.slice(2)) {
+    cells[linearCoord(coord)] = getSegment(prevCoord, coord, nextCoord);
+    prevCoord = coord;
+    coord = nextCoord;
   }
   cells[linearCoord(state.head)] = colorSpan('@', colors.lightPurple);
   cells[linearCoord(state.food)] = colorSpan('*', colors.lightPurple);
@@ -232,7 +313,7 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   useEffect(() => {
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), gameState.tickInterval);
     return () => window.clearInterval(id);
-  }, [gameState.tickInterval]);
+  }, [gameState.tickInterval, gameState.snake]);
 
   function box(
     width: number, 
@@ -274,9 +355,8 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
       <div>&nbsp;</div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <GridView
-          state={gameState}
-        />
+        <GridView state={gameState}/>
+
         <div style={{ whiteSpace: 'pre' }}>
           {
             box(

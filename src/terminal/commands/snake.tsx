@@ -4,7 +4,7 @@ import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
 import { pad } from "../helpers";
 
-const gridSize = 18;
+const gridSize = 16;
 const cellSize = '2ch';
 const emptyVal = '·';
 const initialInterval = 300;
@@ -30,18 +30,34 @@ type Action =
   | { type: 'RESTART' }
   | { type: 'LOSE' }
   | { type: 'TOGGLE_PAUSE' }
+  | { type: 'EXIT', appExit: AppExit }
   ;
 
 type Hotkey = {
   key: string;
   desc: string;
-  dispatchAction: Action;
+  dispatch?: Action;
+  fn?: Function;
 };
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 function inBounds([x, y]: Coord): boolean {
   return x >= 0 && x < gridSize && y >= 0 && y < gridSize;
+}
+
+function speedOffset(growth: number): number {
+  let intervalOffset: number = 0;
+  for (var i = 1; i < growth; i++) {
+    if (i <= 5) {
+      intervalOffset += 10;
+    } else if (i <= 15) {
+      intervalOffset += 5;
+    } else {
+      intervalOffset += 2;
+    }
+  }
+  return intervalOffset;
 }
 
 function nextCell([x, y]: Coord, dir: Direction): Coord {
@@ -79,7 +95,8 @@ function reducer(state: GameState, action: Action): GameState {
         ([randInt(0, gridSize - 1), randInt(0, gridSize - 1)]) :
         state.food;
       const snake = [...body, next];
-      const nextState = {...state, snake, head: next, food};
+      const tickInterval = initialInterval - speedOffset(state.snake.length - 3);
+      const nextState = {...state, snake, head: next, food, tickInterval};
       if (!inBounds(next) || state.snake.some(crd => cmppair(crd, next))) {
         return reducer(nextState, { type: 'LOSE' });
       }
@@ -100,7 +117,12 @@ function reducer(state: GameState, action: Action): GameState {
       if (state.hasLost) {
         return state;
       }
-      return { ...state, tickInterval: state.tickInterval === pausedInterval ? initialInterval : pausedInterval };
+      const interval = initialInterval - speedOffset(state.snake.length - 3);
+      return { ...state, tickInterval: state.tickInterval === pausedInterval ? interval : pausedInterval };
+    }
+    case 'EXIT': {
+      action.appExit();
+      return state;
     }
   }
 }
@@ -155,35 +177,40 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   const [gameState, dispatch] = useReducer(reducer, undefined, initialState);
 
   const hotkeys = useMemo<Hotkey[]>(() => [
+    { 
+      key: 'q', 
+      desc: 'quit', 
+      fn: onExit,
+    },
     {
       key: 'r', 
       desc: 'restart', 
-      dispatchAction: { type: 'RESTART' },
+      dispatch: { type: 'RESTART' },
     },
     {
       key: 'p', 
       desc: gameState.tickInterval === pausedInterval ? 'pause' : 'unpause', 
-      dispatchAction: { type: 'TOGGLE_PAUSE' },
+      dispatch: { type: 'TOGGLE_PAUSE' },
     },
     { 
       key: 'arrowdown', 
       desc: 'move down', 
-      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'down' },
+      dispatch: { type: 'INPUT_DIRECTION', dir: 'down' },
     },
     { 
       key: 'arrowup', 
       desc: 'move up', 
-      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'up' },
+      dispatch: { type: 'INPUT_DIRECTION', dir: 'up' },
     },
     { 
       key: 'arrowleft', 
       desc: 'move left', 
-      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'left' },
+      dispatch: { type: 'INPUT_DIRECTION', dir: 'left' },
     },
     { 
       key: 'arrowright', 
       desc: 'move right', 
-      dispatchAction: { type: 'INPUT_DIRECTION', dir: 'right' },
+      dispatch: { type: 'INPUT_DIRECTION', dir: 'right' },
     },
   ], [gameState.tickInterval]);
 
@@ -193,7 +220,8 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
       const handler = handlerMap.get(e.key) ?? handlerMap.get(e.key.toLowerCase());
       if (handler) {
         e.preventDefault();
-        dispatch(handler.dispatchAction);
+        if (handler.dispatch) { dispatch(handler.dispatch); }
+        if (handler.fn) { handler.fn(); }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -204,6 +232,30 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), gameState.tickInterval);
     return () => window.clearInterval(id);
   }, [gameState.tickInterval]);
+
+  function box(width: number, lines: string[], lrPadding = 1) {
+    if (width - (lrPadding * 2) < 2) {
+      throw 'box width too small';
+    }
+
+    const tLeft = '┌';
+    const tRight = '┐';
+    const bLeft = '└';
+    const bRight = '┘';
+
+    const vert = '│';
+    const horiz = '─';
+
+    const topRow = tLeft + horiz.repeat(width - 2) + tRight;
+    const botRow = bLeft + horiz.repeat(width - 2) + bRight;
+
+    const lrPad = ' '.repeat(lrPadding);
+    const toPad = width - lrPadding * 2 - 2;
+    const contentRows = lines.map(line => 
+      vert + lrPad + pad(line, toPad, true) + lrPad + vert
+    );
+    return [topRow, ...contentRows, botRow];
+  }
 
   const len = pad(gameState.snake.length, 3, true);
 
@@ -220,19 +272,20 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
         />
         <div style={{ whiteSpace: 'pre' }}>
           {
-            [
-              " ┌──────────────┐",
-              ` │ Length: ${len}  │`,
-              " │              │",
-              " │              │",
-              " └──────────────┘",
-            ].map((cell, idx) => <div key={idx}>{cell}</div>)
+            box(
+              16, 
+              [
+                `Length: ${len}`,
+                '',
+                gameState.hasLost ? 'You Lost!' : ''
+              ]).
+              map((cell, idx) => <div key={idx}>{cell}</div>)
           }
         </div>
       </div>
 
       <div>&nbsp;</div>
-      <div>Arrow keys to move, r to restart, p to pause.</div>
+      <div>Arrow keys to move, r to restart, p to pause, q to quit.</div>
     </>
   );
 }

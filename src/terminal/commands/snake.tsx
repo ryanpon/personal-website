@@ -18,7 +18,8 @@ type GameState = {
   snake: Coord[];
   head: Coord;
   food: Coord;
-  dir: Direction;
+  nextDir: Direction;
+  curDir: Direction;
   tickInterval: number,
   hasLost: boolean,
 };
@@ -107,13 +108,7 @@ function linearCoord([x, y]: Coord) {
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'TICK': {
-      // const maybeNext = nextCell(state.head, state.dir);
-      // // don't allow moving into the snake body
-      // const fixedDir = cmppair(maybeNext, state.snake.at(-2) ?? [0,0]) ?
-      //   dir(state.snake.at(-2) ?? [0,0], state.snake.at(-1) ?? [0,0]) :
-      //   state.dir;
-      // console.log(fixedDir, state.dir);
-      const next = nextCell(state.head, state.dir);
+      const next = nextCell(state.head, state.nextDir);
       const nextHasFood = cmppair(next, state.food);
       const body = state.snake.slice(nextHasFood ? 0 : 1);
       const snake = [...body, next];
@@ -133,7 +128,8 @@ function reducer(state: GameState, action: Action): GameState {
         snake,
         head: next,
         food,
-        tickInterval
+        tickInterval,
+        curDir: state.nextDir,
       };
       if (!inBounds(next) || state.snake.some(crd => cmppair(crd, next))) {
         return reducer(nextState, { type: 'LOSE' });
@@ -143,11 +139,11 @@ function reducer(state: GameState, action: Action): GameState {
     }
     case 'INPUT_DIRECTION': {
       const {dir} = action;
-      if (dir === dirOpposites[state.dir]) {
+      if (dir === dirOpposites[state.curDir]) {
         // prevents losing by u-turning into the body
-        return state;
+        return {...state, nextDir: state.curDir};
       }
-      return {...state, dir};
+      return {...state, nextDir: dir};
     }
     case 'RESTART': {
       return initialState();
@@ -176,7 +172,8 @@ function initialState(): GameState {
     snake: [[2, 4], [3, 4], head],
     head: head,
     food: [8, 8],
-    dir: 'right',
+    curDir: 'right',
+    nextDir: 'right',
     tickInterval: initialInterval,
     hasLost: false
   }

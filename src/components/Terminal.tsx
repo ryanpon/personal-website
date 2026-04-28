@@ -60,15 +60,20 @@ export default function Terminal() {
         setLines([]);
         return;
       }
-      if (activeApp && e.key === "c" && e.ctrlKey) {
-        if (window.getSelection()?.toString()) return;
+      if (e.key === "c" && e.ctrlKey) {
         e.preventDefault();
-        exitApp();
+        if (activeApp) {
+          if (window.getSelection()?.toString()) return;
+          exitApp();
+        } else {
+          setLines(prev => [...prev, '% ' + inputVal]);
+          setInput('');
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [activeApp, exitApp]);
+  }, [activeApp, exitApp, lines, inputVal]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowUp") {
@@ -117,7 +122,7 @@ export default function Terminal() {
       ) : (
         <>
           {lines.map((line, idx) => (
-            <div key={idx}>{line}</div>
+            <div key={idx} style={{ whiteSpace: 'pre' }}>{line}</div>
           ))}
           <TerminalInput
             value={inputVal}

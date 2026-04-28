@@ -17,7 +17,6 @@ type Direction = 'up' | 'down' | 'left' | 'right';
 type GameState = {
   snake: Coord[];
   head: Coord;
-  tail: Coord;
   food: Coord;
   dir: Direction;
   tickInterval: number,
@@ -91,10 +90,17 @@ function reducer(state: GameState, action: Action): GameState {
       const next = nextCell(state.head, state.dir);
       const nextHasFood = cmppair(next, state.food);
       const body = state.snake.slice(nextHasFood ? 0 : 1);
-      const food: Coord = nextHasFood ? 
-        ([randInt(0, gridSize - 1), randInt(0, gridSize - 1)]) :
-        state.food;
       const snake = [...body, next];
+      let food: Coord;
+      if (nextHasFood) {
+        food = snake[0];
+        while (state.snake.some(crd => cmppair(crd, food))) {
+          food = [randInt(0, gridSize - 1), randInt(0, gridSize - 1)]
+        }
+      } else {
+        food = state.food;
+      }
+
       const tickInterval = initialInterval - speedOffset(state.snake.length - 3);
       const nextState = {...state, snake, head: next, food, tickInterval};
       if (!inBounds(next) || state.snake.some(crd => cmppair(crd, next))) {
@@ -129,16 +135,11 @@ function reducer(state: GameState, action: Action): GameState {
 
 function initialState(): GameState {
   const head : Coord = [4, 4];
-  const mid  : Coord = [3, 4];
-  const tail : Coord = [2, 4];
-
-  const food : Coord = [8, 8]
 
   return {
-    snake: [tail, mid, head],
-    head,
-    tail,
-    food,
+    snake: [[2, 4], [3, 4], head],
+    head: head,
+    food: [8, 8],
     dir: 'right',
     tickInterval: initialInterval,
     hasLost: false
@@ -148,13 +149,13 @@ function initialState(): GameState {
 function GridView({ state }: {
   state: GameState;
 }) {
-  const cells: Array<string> = new Array(gridSize ** 2).fill('.');
+  const cells: Array<string|ReactNode> = new Array(gridSize ** 2).fill('.');
 
   for (const coord of state.snake) {
     cells[linearCoord(coord)] = 'o';
   }
-  cells[linearCoord(state.head)] = '@';
-  cells[linearCoord(state.food)] = '*';
+  cells[linearCoord(state.head)] = colorSpan('@', colors.lightPurple);
+  cells[linearCoord(state.food)] = colorSpan('*', colors.lightPurple);
 
   return (
     <div
@@ -233,7 +234,11 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
     return () => window.clearInterval(id);
   }, [gameState.tickInterval]);
 
-  function box(width: number, lines: string[], lrPadding = 1) {
+  function box(
+    width: number, 
+    lines: Array<{node: ReactNode, width: number}>, 
+    lrPadding = 1
+  ) {
     if (width - (lrPadding * 2) < 2) {
       throw 'box width too small';
     }
@@ -246,18 +251,20 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
     const vert = '│';
     const horiz = '─';
 
-    const topRow = tLeft + horiz.repeat(width - 2) + tRight;
-    const botRow = bLeft + horiz.repeat(width - 2) + bRight;
+    const topRow = (<div>{tLeft}{horiz.repeat(width - 2)}{tRight}</div>);
+    const botRow = (<div>{bLeft}{horiz.repeat(width - 2)}{bRight}</div>);
 
     const lrPad = ' '.repeat(lrPadding);
-    const toPad = width - lrPadding * 2 - 2;
-    const contentRows = lines.map(line => 
-      vert + lrPad + pad(line, toPad, true) + lrPad + vert
-    );
+    const padContentTo = width - lrPadding * 2 - 2;
+    const contentRows = lines.map(({node, width}, idx) => {
+      const rPad = ' '.repeat(padContentTo - width);
+      return (<div key={idx}>{vert}{lrPad}{node}{rPad}{lrPad}{vert}</div>);
+    });
     return [topRow, ...contentRows, botRow];
   }
 
   const len = pad(gameState.snake.length, 3, true);
+  const emptyLine = ['', colors.foreground];
 
   return (
     <>
@@ -275,11 +282,14 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
             box(
               16, 
               [
-                `Length: ${len}`,
-                '',
-                gameState.hasLost ? 'You Lost!' : ''
-              ]).
-              map((cell, idx) => <div key={idx}>{cell}</div>)
+                [`Length: ${len}`, colors.foreground],
+                emptyLine,
+                gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine
+              ].map(([str, color]) => ({ 
+                  node: colorSpan(str, color),
+                  width: str.length,
+                }))
+            )
           }
         </div>
       </div>

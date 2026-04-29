@@ -1,14 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
 import { pad } from "../helpers";
 
-const gridSize = 16;
+const gridSize = 15;
 const cellSize = '2ch';
 const emptyVal = '·';
-const initialInterval = 300;
-const pausedInterval = 99999999;
+const initialInterval = 350;
 
 type Coord = [number, number];
 
@@ -20,24 +19,22 @@ type GameState = {
   food: Coord;
   nextDir: Direction;
   curDir: Direction;
-  tickInterval: number,
-  hasLost: boolean,
+  tickInterval: number;
+  isPaused: boolean;
+  hasLost: boolean;
 };
 
 type Action =
   | { type: 'TICK' }
   | { type: 'INPUT_DIRECTION', dir: Direction }
   | { type: 'RESTART' }
-  | { type: 'LOSE' }
   | { type: 'TOGGLE_PAUSE' }
-  | { type: 'EXIT', appExit: AppExit }
   ;
 
 type Hotkey = {
   key: string;
-  desc: string;
   dispatch?: Action;
-  fn?: Function;
+  fn?: () => void;
 };
 
 const dirOpposites: Record<Direction, Direction> = {
@@ -45,7 +42,7 @@ const dirOpposites: Record<Direction, Direction> = {
   down: 'up',
   left: 'right',
   right: 'left',
-}
+};
 
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -55,7 +52,7 @@ function inBounds([x, y]: Coord): boolean {
 
 function speedOffset(growth: number): number {
   let intervalOffset: number = 0;
-  for (var i = 1; i < growth; i++) {
+  for (let i = 1; i < growth; i++) {
     if (i <= 5) {
       intervalOffset += 10;
     } else if (i <= 15) {
@@ -97,11 +94,11 @@ function nextCell([x, y]: Coord, dir: Direction): Coord {
   }
 }
 
-function cmppair([x1, y1]: Coord, [x2, y2]: Coord): boolean {
+function coordsEqual([x1, y1]: Coord, [x2, y2]: Coord): boolean {
   return x1 === x2 && y1 === y2;
 }
 
-function linearCoord([x, y]: Coord) {
+function coordIndex([x, y]: Coord) {
   return x + y * gridSize;
 }
 
@@ -109,13 +106,13 @@ function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'TICK': {
       const next = nextCell(state.head, state.nextDir);
-      const nextHasFood = cmppair(next, state.food);
+      const nextHasFood = coordsEqual(next, state.food);
       const body = state.snake.slice(nextHasFood ? 0 : 1);
       const snake = [...body, next];
       let food: Coord;
       if (nextHasFood) {
         food = snake[0];
-        while (state.snake.some(crd => cmppair(crd, food))) {
+        while (snake.some(crd => coordsEqual(crd, food))) {
           food = [randInt(0, gridSize - 1), randInt(0, gridSize - 1)]
         }
       } else {
@@ -131,8 +128,8 @@ function reducer(state: GameState, action: Action): GameState {
         tickInterval,
         curDir: state.nextDir,
       };
-      if (!inBounds(next) || state.snake.some(crd => cmppair(crd, next))) {
-        return reducer(nextState, { type: 'LOSE' });
+      if (!inBounds(next) || state.snake.some(crd => coordsEqual(crd, next))) {
+        return { ...nextState, hasLost: true };
       }
 
       return nextState;
@@ -148,19 +145,11 @@ function reducer(state: GameState, action: Action): GameState {
     case 'RESTART': {
       return initialState();
     }
-    case 'LOSE': {
-      return { ...state, hasLost: true, tickInterval: pausedInterval };
-    }
     case 'TOGGLE_PAUSE': {
       if (state.hasLost) {
         return state;
       }
-      const interval = initialInterval - speedOffset(state.snake.length - 3);
-      return { ...state, tickInterval: state.tickInterval === pausedInterval ? interval : pausedInterval };
-    }
-    case 'EXIT': {
-      action.appExit();
-      return state;
+      return { ...state, isPaused: !state.isPaused };
     }
   }
 }
@@ -175,7 +164,8 @@ function initialState(): GameState {
     curDir: 'right',
     nextDir: 'right',
     tickInterval: initialInterval,
-    hasLost: false
+    isPaused: false,
+    hasLost: false,
   }
 }
 
@@ -219,21 +209,50 @@ function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
   return segments[firstDir][secondDir];
 }
 
+function box(
+  width: number,
+  lines: Array<{node: ReactNode, width: number}>,
+  lrPadding = 1
+) {
+  if (width - (lrPadding * 2) < 2) {
+    throw new Error('box width too small');
+  }
+
+  const tLeft = '┌';
+  const tRight = '┐';
+  const bLeft = '└';
+  const bRight = '┘';
+
+  const vert = '│';
+  const horiz = '─';
+
+  const topRow = (<div>{tLeft}{horiz.repeat(width - 2)}{tRight}</div>);
+  const botRow = (<div>{bLeft}{horiz.repeat(width - 2)}{bRight}</div>);
+
+  const lrPad = ' '.repeat(lrPadding);
+  const padContentTo = width - lrPadding * 2 - 2;
+  const contentRows = lines.map(({node, width}, idx) => {
+    const rPad = ' '.repeat(padContentTo - width);
+    return (<div key={idx}>{vert}{lrPad}{node}{rPad}{lrPad}{vert}</div>);
+  });
+  return [topRow, ...contentRows, botRow];
+}
+
 function GridView({ state }: {
   state: GameState;
 }) {
-  const cells: Array<string|ReactNode> = new Array(gridSize ** 2).fill('.');
-  cells[linearCoord(state.snake[0])] = 'o';
+  const cells: ReactNode[] = new Array(gridSize ** 2).fill(emptyVal);
+  cells[coordIndex(state.snake[0])] = 'o';
 
   let prevCoord: Coord | null = state.snake[0];
   let coord: Coord | null = state.snake[1];
   for (const nextCoord of state.snake.slice(2)) {
-    cells[linearCoord(coord)] = getSegment(prevCoord, coord, nextCoord);
+    cells[coordIndex(coord)] = getSegment(prevCoord, coord, nextCoord);
     prevCoord = coord;
     coord = nextCoord;
   }
-  cells[linearCoord(state.head)] = colorSpan('@', colors.lightPurple);
-  cells[linearCoord(state.food)] = colorSpan('*', colors.lightPurple);
+  cells[coordIndex(state.head)] = colorSpan('@', colors.lightPurple);
+  cells[coordIndex(state.food)] = colorSpan('*', colors.lightPurple);
 
   return (
     <div
@@ -256,42 +275,14 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   const [gameState, dispatch] = useReducer(reducer, undefined, initialState);
 
   const hotkeys = useMemo<Hotkey[]>(() => [
-    { 
-      key: 'q', 
-      desc: 'quit', 
-      fn: onExit,
-    },
-    {
-      key: 'r', 
-      desc: 'restart', 
-      dispatch: { type: 'RESTART' },
-    },
-    {
-      key: 'p', 
-      desc: gameState.tickInterval === pausedInterval ? 'pause' : 'unpause', 
-      dispatch: { type: 'TOGGLE_PAUSE' },
-    },
-    { 
-      key: 'arrowdown', 
-      desc: 'move down', 
-      dispatch: { type: 'INPUT_DIRECTION', dir: 'down' },
-    },
-    { 
-      key: 'arrowup', 
-      desc: 'move up', 
-      dispatch: { type: 'INPUT_DIRECTION', dir: 'up' },
-    },
-    { 
-      key: 'arrowleft', 
-      desc: 'move left', 
-      dispatch: { type: 'INPUT_DIRECTION', dir: 'left' },
-    },
-    { 
-      key: 'arrowright', 
-      desc: 'move right', 
-      dispatch: { type: 'INPUT_DIRECTION', dir: 'right' },
-    },
-  ], [gameState.tickInterval]);
+    { key: 'q', fn: onExit },
+    { key: 'r', dispatch: { type: 'RESTART' } },
+    { key: 'p', dispatch: { type: 'TOGGLE_PAUSE' } },
+    { key: 'arrowdown', dispatch: { type: 'INPUT_DIRECTION', dir: 'down' } },
+    { key: 'arrowup', dispatch: { type: 'INPUT_DIRECTION', dir: 'up' } },
+    { key: 'arrowleft', dispatch: { type: 'INPUT_DIRECTION', dir: 'left' } },
+    { key: 'arrowright', dispatch: { type: 'INPUT_DIRECTION', dir: 'right' } },
+  ], [onExit]);
 
   useEffect(() => {
     const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
@@ -308,38 +299,10 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   }, [hotkeys]);
 
   useEffect(() => {
+    if (gameState.isPaused || gameState.hasLost) return;
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), gameState.tickInterval);
     return () => window.clearInterval(id);
-  }, [gameState.tickInterval, gameState.snake]);
-
-  function box(
-    width: number, 
-    lines: Array<{node: ReactNode, width: number}>, 
-    lrPadding = 1
-  ) {
-    if (width - (lrPadding * 2) < 2) {
-      throw 'box width too small';
-    }
-
-    const tLeft = '┌';
-    const tRight = '┐';
-    const bLeft = '└';
-    const bRight = '┘';
-
-    const vert = '│';
-    const horiz = '─';
-
-    const topRow = (<div>{tLeft}{horiz.repeat(width - 2)}{tRight}</div>);
-    const botRow = (<div>{bLeft}{horiz.repeat(width - 2)}{bRight}</div>);
-
-    const lrPad = ' '.repeat(lrPadding);
-    const padContentTo = width - lrPadding * 2 - 2;
-    const contentRows = lines.map(({node, width}, idx) => {
-      const rPad = ' '.repeat(padContentTo - width);
-      return (<div key={idx}>{vert}{lrPad}{node}{rPad}{lrPad}{vert}</div>);
-    });
-    return [topRow, ...contentRows, botRow];
-  }
+  }, [gameState.tickInterval, gameState.isPaused, gameState.hasLost]);
 
   const len = pad(gameState.snake.length, 3, true);
   const emptyLine = ['', colors.foreground];

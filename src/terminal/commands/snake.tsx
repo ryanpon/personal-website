@@ -130,7 +130,7 @@ function reducer(state: GameState, action: Action): GameState {
         curDir: state.nextDir,
       };
 
-      const bodyCollision = state.snake.some(crd => coordsEqual(crd, next));
+      const bodyCollision = body.some(crd => coordsEqual(crd, next));
       const outOfBounds = !inBounds(next);
       if (outOfBounds || bodyCollision) {
         return { ...nextState, hasLost: true };
@@ -288,21 +288,30 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         <PlayField state={gameState}/>
-
-        <Grid
-          rows={
-            [
-              [`Length: ${len}`, colors.foreground],
-              emptyLine,
-              gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
-            ]
-          }
-          width={14}
-        />
+        <div style={{flexDirection: 'column'}}>
+          <Grid
+            rows={
+              [
+                [`Length: ${len}`, colors.foreground],
+                emptyLine,
+                gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
+              ]
+            }
+            width={18}
+          />
+          <Grid
+            rows={
+              [
+                ["Arrow keys to move", colors.foreground],
+                ["r to restart", colors.foreground],
+                ["p to pause", colors.foreground],
+                ["q to quit", colors.foreground],
+              ]
+            }
+            width={18}
+          />
+        </div>
       </div>
-
-      <div>&nbsp;</div>
-      <div>Arrow keys to move, r to restart, p to pause, q to quit.</div>
     </>
   );
 }

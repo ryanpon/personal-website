@@ -25,7 +25,7 @@ function LayoutApp({ onExit }: { onExit: AppExit }) {
         <Grid
           rows={[
             ['Customize', colors.lightPurple],
-            ['border', colors.lightPurple],
+            ['border', colors.yellow],
             ['styles', colors.lightPurple],
           ]}
           width={10}

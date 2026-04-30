@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
 import { pad } from "../helpers";
+import { Grid } from "../../components/grid";
 
 const gridSize = 15;
 const cellSize = '2ch';
@@ -209,35 +210,6 @@ function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
   return segments[firstDir][secondDir];
 }
 
-function box(
-  width: number,
-  lines: Array<{node: ReactNode, width: number}>,
-  lrPadding = 1
-) {
-  if (width - (lrPadding * 2) < 2) {
-    throw new Error('box width too small');
-  }
-
-  const tLeft = '┌';
-  const tRight = '┐';
-  const bLeft = '└';
-  const bRight = '┘';
-
-  const vert = '│';
-  const horiz = '─';
-
-  const topRow = (<div>{tLeft}{horiz.repeat(width - 2)}{tRight}</div>);
-  const botRow = (<div>{bLeft}{horiz.repeat(width - 2)}{bRight}</div>);
-
-  const lrPad = ' '.repeat(lrPadding);
-  const padContentTo = width - lrPadding * 2 - 2;
-  const contentRows = lines.map(({node, width}, idx) => {
-    const rPad = ' '.repeat(padContentTo - width);
-    return (<div key={idx}>{vert}{lrPad}{node}{rPad}{lrPad}{vert}</div>);
-  });
-  return [topRow, ...contentRows, botRow];
-}
-
 function GridView({ state }: {
   state: GameState;
 }) {
@@ -305,7 +277,7 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   }, [gameState.tickInterval, gameState.isPaused, gameState.hasLost]);
 
   const len = pad(gameState.snake.length, 3, true);
-  const emptyLine = ['', colors.foreground];
+  const emptyLine: [string, string] = ['', colors.foreground];
 
   return (
     <>
@@ -317,21 +289,16 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         <GridView state={gameState}/>
 
-        <div style={{ whiteSpace: 'pre' }}>
-          {
-            box(
-              16, 
-              [
-                [`Length: ${len}`, colors.foreground],
-                emptyLine,
-                gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine
-              ].map(([str, color]) => ({ 
-                  node: colorSpan(str, color),
-                  width: str.length,
-                }))
-            )
+        <Grid
+          rows={
+            [
+              [`Length: ${len}`, colors.foreground],
+              emptyLine,
+              gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
+            ]
           }
-        </div>
+          width={14}
+        />
       </div>
 
       <div>&nbsp;</div>

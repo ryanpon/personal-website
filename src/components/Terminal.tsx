@@ -60,7 +60,7 @@ export default function Terminal() {
         setLines([]);
         return;
       }
-      if (e.key === "c" && e.ctrlKey) {
+      if (e.key === "q" || (e.key === "c" && e.ctrlKey)) {
         e.preventDefault();
         if (activeApp) {
           if (window.getSelection()?.toString()) return;

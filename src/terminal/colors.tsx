@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+
 export const colors = {
   background: "#272822",
   foreground: "#f8f8f2",
@@ -12,6 +13,6 @@ export const colors = {
   cyan: "#66d9ef",
 } as const;
 
-export function colorSpan(text: ReactNode, color: string) {
-  return <span style={{ color }}>{text}</span>;
+export function colorSpan(text: ReactNode, color: string, key?: number) {
+  return <span style={{ color }} key={key}>{text}</span>;
 }

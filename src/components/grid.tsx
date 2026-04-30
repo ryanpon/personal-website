@@ -1,6 +1,7 @@
 import { colorSpan, colors } from "../terminal/colors";
 import type { ReactNode } from "react";
 import { pad } from "../terminal/helpers";
+import type { JSX } from "react";
 
 type FlexDirection = 'row' | 'column';
 type WrapEnum = 'ERROR' | 'NO_WRAP' | 'WRAP' | 'TRUNCATE';
@@ -34,7 +35,8 @@ const borderStyles: Record<BorderStyles, Record<BorderElems, string>> = {
   }
 };
 
-export type CellRow = [string, string];
+type RowItems = string | Array<string | JSX.Element>;
+type CellRow = [RowItems, string];
 export type Props = {
   rows: Array<CellRow>,
   width: number,
@@ -66,11 +68,24 @@ export function Grid({
     <div style={{whiteSpace: "pre"}}>
       <div>{tBorder}</div>
       {
-        rows.map(([content, color], idx) => (
-          <div key={'r' + idx}>
-            {lrBorderCh}{lrPadStr}{colorSpan(pad(content, width, true), color, idx)}{lrPadStr}{lrBorderCh}
-          </div>
-        ))
+        rows.map(([content, color], idx) => {
+          const contentWidth = content instanceof Array ?
+            content.reduce((sum, entry) => {
+              return (
+                typeof entry === "string" ?
+                  entry.length :
+                  entry.props.children.length
+              ) + sum;
+            }, 0) :
+            content.length;
+          const rPad = ' '.repeat(Math.max(width - contentWidth, 0));
+
+          return (
+            <div key={'r' + idx}>
+              {lrBorderCh}{lrPadStr}{colorSpan(content, color, idx)}{rPad}{lrPadStr}{lrBorderCh}
+            </div>
+          );
+        })
       }
       <div>{bBorder}</div>
     </div>

@@ -210,7 +210,7 @@ function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
   return segments[firstDir][secondDir];
 }
 
-function GridView({ state }: {
+function PlayField({ state }: {
   state: GameState;
 }) {
   const cells: ReactNode[] = new Array(gridSize ** 2).fill(emptyVal);
@@ -236,10 +236,25 @@ function GridView({ state }: {
         textAlign: "center",
       }}
     >
-      {cells.map((cell, idx) => (
-        <span key={idx}>{cell}</span>
-      ))}
+      {
+        cells.map((cell, idx) => (
+          <span key={idx}>{cell}</span>
+        ))
+      }
     </div>
+  );
+
+  return (
+    <Grid
+      rows={
+        [
+          [`Length: ${len}`, colors.foreground],
+          emptyLine,
+          gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
+        ]
+      }
+      width={14}
+    />
   );
 }
 
@@ -287,7 +302,7 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
       <div>&nbsp;</div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <GridView state={gameState}/>
+        <PlayField state={gameState}/>
 
         <Grid
           rows={

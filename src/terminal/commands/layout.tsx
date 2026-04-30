@@ -10,7 +10,7 @@ function LayoutApp({ onExit }: { onExit: AppExit }) {
     <div style={{ display: 'flex', alignItems: 'flex-start'}}>
       <Grid
         rows={[
-          ['hello world', colors.lightPurple],
+          [['hell', colorSpan('o w', colors.pink), 'orld'], colors.lightPurple],
           ['*', colors.lightPurple],
           ['*', colors.lightPurple],
           ['*', colors.lightPurple],

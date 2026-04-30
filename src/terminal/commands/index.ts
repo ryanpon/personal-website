@@ -3,6 +3,7 @@ import { resumeCommand } from "./resume";
 import { routingCommand } from "./routing";
 import { snakeCommand } from "./snake";
 import { layoutCommand } from "./layout";
+import { artCommand } from "./art";
 import type { Command, CommandResult } from "./types";
 
 export const commands: Record<string, Command> = {
@@ -11,6 +12,7 @@ export const commands: Record<string, Command> = {
   [routingCommand.name]: routingCommand,
   [snakeCommand.name]: snakeCommand,
   [layoutCommand.name]: layoutCommand,
+  [artCommand.name]: artCommand,
 };
 
 export const commandNames = Object.keys(commands);

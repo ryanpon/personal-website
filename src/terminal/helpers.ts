@@ -4,3 +4,10 @@ export function pad(s: string | number, width: number, right = false) {
   const fill = " ".repeat(width - str.length);
   return right ? str + fill : fill + str;
 }
+export function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}

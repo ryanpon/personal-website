@@ -45,6 +45,8 @@ export type Props = {
   tMargin?: number,
   borderColor?: string,
   borderStyle?: BorderStyles,
+  lineHeight?: string,
+  letterSpacing?: string,
 };
 
 export function Grid({
@@ -55,6 +57,8 @@ export function Grid({
   tMargin = 0,
   borderStyle = 'single',
   borderColor = colors.foreground,
+  lineHeight,
+  letterSpacing,
 }: Props) {
   const lrPadStr = ' '.repeat(lrPad);
   const totWidth = width + (lrPad * 2);
@@ -64,8 +68,18 @@ export function Grid({
   const bBorder = colorSpan(bc.bLeft + bc.horiz.repeat(totWidth) + bc.bRight, borderColor);
   const lrBorderCh = colorSpan(bc.vert, borderColor);
 
+  const style: Record<string, string> = {
+    whiteSpace: "pre",
+  };
+  if (lineHeight) {
+    style['lineHeight'] = lineHeight;
+  }
+  if (letterSpacing) {
+    style['letterSpacing'] = letterSpacing;
+  }
+
   return (
-    <div style={{whiteSpace: "pre"}}>
+    <div style={style}>
       <div>{tBorder}</div>
       {
         rows.map(([content, color], idx) => {

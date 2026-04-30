@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
-import { pad } from "../helpers";
+import { pad, chunk } from "../helpers";
 import { Grid } from "../../components/grid";
 
 const gridSize = 15;
@@ -129,7 +129,10 @@ function reducer(state: GameState, action: Action): GameState {
         tickInterval,
         curDir: state.nextDir,
       };
-      if (!inBounds(next) || state.snake.some(crd => coordsEqual(crd, next))) {
+
+      const bodyCollision = state.snake.some(crd => coordsEqual(crd, next));
+      const outOfBounds = !inBounds(next);
+      if (outOfBounds || bodyCollision) {
         return { ...nextState, hasLost: true };
       }
 
@@ -213,7 +216,7 @@ function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
 function PlayField({ state }: {
   state: GameState;
 }) {
-  const cells: ReactNode[] = new Array(gridSize ** 2).fill(emptyVal);
+  const cells = new Array(gridSize ** 2).fill(emptyVal);
   cells[coordIndex(state.snake[0])] = 'o';
 
   let prevCoord: Coord | null = state.snake[0];
@@ -223,37 +226,19 @@ function PlayField({ state }: {
     prevCoord = coord;
     coord = nextCoord;
   }
-  cells[coordIndex(state.head)] = colorSpan('@', colors.lightPurple);
+  if (!state.hasLost) {
+    cells[coordIndex(state.head)] = colorSpan('@', colors.lightPurple);
+  }
   cells[coordIndex(state.food)] = colorSpan('*', colors.lightPurple);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${gridSize}, ${cellSize})`,
-        gridAutoRows: cellSize,
-        lineHeight: cellSize,
-        textAlign: "center",
-      }}
-    >
-      {
-        cells.map((cell, idx) => (
-          <span key={idx}>{cell}</span>
-        ))
-      }
-    </div>
-  );
-
-  return (
     <Grid
-      rows={
-        [
-          [`Length: ${len}`, colors.foreground],
-          emptyLine,
-          gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
-        ]
-      }
-      width={14}
+      rows={chunk(cells, gridSize).map(row => [row, colors.foreground])}
+      width={gridSize}
+      borderStyle={"double"}
+      lineHeight={cellSize}
+      letterSpacing={"1ch"}
+      lrPad={0}
     />
   );
 }

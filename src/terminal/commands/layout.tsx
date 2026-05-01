@@ -2,12 +2,13 @@ import { useEffect, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { Grid } from "../../components/grid";
+import { Row } from "../../components/AppShell";
 import { appCommand, type AppExit, type Command } from "./types";
 import { pad } from "../helpers";
 
 function LayoutApp({ onExit }: { onExit: AppExit }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start'}}>
+    <Row>
       <Grid
         rows={[
           [['hell', colorSpan('o w', colors.pink), 'orld'], colors.lightPurple],
@@ -64,7 +65,7 @@ function LayoutApp({ onExit }: { onExit: AppExit }) {
           borderStyle={'none'}
         />
       </div>
-    </div>
+    </Row>
   );
 }
 

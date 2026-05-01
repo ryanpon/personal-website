@@ -4,6 +4,7 @@ import { Grid } from "../../components/grid";
 import { appCommand, type AppExit, type Command } from "./types";
 import type { Coord } from "../geometry";
 import { useInterval } from "../hooks/useInterval";
+import { Row } from "../../components/AppShell";
 
 const gridSize = 20;
 
@@ -91,7 +92,7 @@ function ArtApp({ onExit }: { onExit: AppExit }) {
   useInterval(() => dispatch({ type: 'TICK' }), 100);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start'}}>
+    <Row>
       <Grid
         rows={rows}
         width={gridSize}
@@ -99,7 +100,7 @@ function ArtApp({ onExit }: { onExit: AppExit }) {
         letterSpacing={"1ch"}
         lrPad={0}
       />
-    </div>
+    </Row>
   );
 }
 

@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { appCommand, type AppExit, type Command } from "./types";
 import { pad, chunk, randInt } from "../helpers";
-import { Grid } from "../../components/grid";
+import { Grid, row } from "../../components/grid";
+import { AppShell, Row } from "../../components/AppShell";
 import {
   type Coord,
   type Direction,
@@ -218,42 +219,33 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   );
 
   const len = pad(gameState.snake.length, 3, true);
-  const emptyLine: [string, string] = ['', colors.foreground];
+  const empty = row('');
 
   return (
-    <>
-      <div style={{ color: colors.background, backgroundColor: colors.foreground }}>
-        Snake
-      </div>
-      <div>&nbsp;</div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+    <AppShell title="Snake">
+      <Row>
         <PlayField state={gameState}/>
         <div style={{flexDirection: 'column'}}>
           <Grid
-            rows={
-              [
-                [`Length: ${len}`, colors.foreground],
-                emptyLine,
-                gameState.hasLost ? ['You Lost!', colors.yellow] : emptyLine,
-              ]
-            }
+            rows={[
+              row(`Length: ${len}`),
+              empty,
+              gameState.hasLost ? row('You Lost!', colors.yellow) : empty,
+            ]}
             width={18}
           />
           <Grid
-            rows={
-              [
-                ["Arrow keys to move", colors.foreground],
-                ["r to restart", colors.foreground],
-                ["p to pause", colors.foreground],
-                ["q to quit", colors.foreground],
-              ]
-            }
+            rows={[
+              row("Arrow keys to move"),
+              row("r to restart"),
+              row("p to pause"),
+              row("q to quit"),
+            ]}
             width={18}
           />
         </div>
-      </div>
-    </>
+      </Row>
+    </AppShell>
   );
 }
 

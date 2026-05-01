@@ -6,6 +6,7 @@ import { appCommand, type AppExit, type Command } from "./types";
 import { type Coord, dist, eq as coordsEq, inBounds as coordInBounds } from "../geometry";
 import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
 import { useInterval } from "../hooks/useInterval";
+import { AppShell, Row } from "../../components/AppShell";
 
 const gridSize = 20;
 const cellSize = '2.5ch';
@@ -526,13 +527,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   useHotkeys(hotkeys);
 
   return (
-    <>
-      <div style={{ color: colors.background, backgroundColor: colors.foreground }}>
-        Routing
-      </div>
-      <div>&nbsp;</div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+    <AppShell title="Routing">
+      <Row>
         <GridView
           state={gridState}
           tick={tick}
@@ -545,12 +541,12 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
           editMode={editMode}
           speed={pathfinderInterval}
         />
-      </div>
+      </Row>
 
       <div>&nbsp;</div>
 
       <Hotkeys hotkeys={hotkeys} />
-    </>
+    </AppShell>
   );
 }
 

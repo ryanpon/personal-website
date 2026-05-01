@@ -35,8 +35,13 @@ const borderStyles: Record<BorderStyles, Record<BorderElems, string>> = {
   }
 };
 
-type RowItems = string | Array<string | JSX.Element>;
-type CellRow = [RowItems, string];
+export type RowItems = string | Array<string | JSX.Element>;
+export type CellRow = [RowItems, string];
+
+export function row(content: RowItems, color: string = colors.foreground): CellRow {
+  return [content, color];
+}
+
 export type Props = {
   rows: Array<CellRow>,
   width: number,

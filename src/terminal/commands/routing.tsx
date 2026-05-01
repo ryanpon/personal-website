@@ -5,6 +5,7 @@ import { MinHeap } from "../minheap";
 import type { AppExit, Command } from "./types";
 import { type Coord, dist, eq as coordsEq, inBounds as coordInBounds } from "../geometry";
 import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
+import { useInterval } from "../hooks/useInterval";
 
 const gridSize = 20;
 const cellSize = '2.5ch';
@@ -457,20 +458,16 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     }
   }, []);
 
-  useEffect(() => {
-    const id = window.setInterval(() => setTick(t => t + 1), 500);
-    return () => window.clearInterval(id);
-  }, []);
+  useInterval(() => setTick(t => t + 1), 500);
 
   useEffect(() => {
     if (gridState.search.done) setPaused(true);
   }, [gridState.search.done]);
 
-  useEffect(() => {
-    if (paused) return;
-    const id = window.setInterval(() => dispatch({ type: 'TICK' }), pathfinderInterval);
-    return () => window.clearInterval(id);
-  }, [paused, pathfinderInterval]);
+  useInterval(
+    () => dispatch({ type: 'TICK' }),
+    paused ? null : pathfinderInterval,
+  );
 
   const hotkeys = useMemo<Hotkey[]>(() => [
     { key: 'q', desc: 'quit', visible: true, fn: () => onExit() },

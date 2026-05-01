@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from "react";
+import { useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
@@ -14,6 +14,7 @@ import {
   step,
 } from "../geometry";
 import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
+import { useInterval } from "../hooks/useInterval";
 
 const gridSize = 15;
 const cellSize = '2ch';
@@ -211,11 +212,10 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
 
   useHotkeys(hotkeys);
 
-  useEffect(() => {
-    if (gameState.isPaused || gameState.hasLost) return;
-    const id = window.setInterval(() => dispatch({ type: 'TICK' }), gameState.tickInterval);
-    return () => window.clearInterval(id);
-  }, [gameState.tickInterval, gameState.isPaused, gameState.hasLost]);
+  useInterval(
+    () => dispatch({ type: 'TICK' }),
+    gameState.isPaused || gameState.hasLost ? null : gameState.tickInterval,
+  );
 
   const len = pad(gameState.snake.length, 3, true);
   const emptyLine: [string, string] = ['', colors.foreground];

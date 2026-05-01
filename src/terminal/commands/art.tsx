@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useReducer } from "react";
-import type { ReactNode } from "react";
-import { colorSpan, colors } from "../colors";
+import { useReducer } from "react";
+import { colors } from "../colors";
 import { Grid } from "../../components/grid";
 import type { AppExit, Command } from "./types";
-import { pad } from "../helpers";
 import type { Coord } from "../geometry";
+import { useInterval } from "../hooks/useInterval";
 
 const gridSize = 20;
 
@@ -89,10 +88,7 @@ function ArtApp({ onExit }: { onExit: AppExit }) {
     rows.push([row.join(''), colors.foreground]);
   }
 
-  useEffect(() => {
-    const id = window.setInterval(() => dispatch({ type: 'TICK' }), 100);
-    return () => window.clearInterval(id);
-  }, []);
+  useInterval(() => dispatch({ type: 'TICK' }), 100);
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start'}}>

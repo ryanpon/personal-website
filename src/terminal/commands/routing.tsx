@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } f
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { MinHeap } from "../minheap";
-import type { AppExit, Command } from "./types";
+import { appCommand, type AppExit, type Command } from "./types";
 import { type Coord, dist, eq as coordsEq, inBounds as coordInBounds } from "../geometry";
 import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
 import { useInterval } from "../hooks/useInterval";
@@ -554,11 +554,8 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
   );
 }
 
-export const routingCommand: Command = {
-  name: "routing",
-  help: "An animated pathfinding algorithm!",
-  run: () => ({
-    kind: "app",
-    app: { name: "routing", Component: RoutingApp },
-  }),
-};
+export const routingCommand: Command = appCommand(
+  "routing",
+  "An animated pathfinding algorithm!",
+  RoutingApp,
+);

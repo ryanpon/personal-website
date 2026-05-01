@@ -1,7 +1,7 @@
 import { useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
-import type { AppExit, Command } from "./types";
+import { appCommand, type AppExit, type Command } from "./types";
 import { pad, chunk, randInt } from "../helpers";
 import { Grid } from "../../components/grid";
 import {
@@ -257,11 +257,4 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
   );
 }
 
-export const snakeCommand: Command = {
-  name: "snake",
-  help: "It's snake",
-  run: () => ({
-    kind: "app",
-    app: { name: "routing", Component: SnakeApp },
-  }),
-};
+export const snakeCommand: Command = appCommand("snake", "It's snake", SnakeApp);

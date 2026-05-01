@@ -21,3 +21,15 @@ export type Command = {
   options?: string[];
   run: (args: string[], ctx: CommandContext) => CommandResult;
 };
+
+export function appCommand(
+  name: string,
+  help: string,
+  Component: FC<{ onExit: AppExit }>,
+): Command {
+  return {
+    name,
+    help,
+    run: () => ({ kind: "app", app: { name, Component } }),
+  };
+}

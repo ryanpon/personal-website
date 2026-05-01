@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { Grid } from "../../components/grid";
-import type { AppExit, Command } from "./types";
+import { appCommand, type AppExit, type Command } from "./types";
 import { pad } from "../helpers";
 
 function LayoutApp({ onExit }: { onExit: AppExit }) {
@@ -68,11 +68,4 @@ function LayoutApp({ onExit }: { onExit: AppExit }) {
   );
 }
 
-export const layoutCommand: Command = {
-  name: "layout",
-  help: "Grid layout demo",
-  run: () => ({
-    kind: "app",
-    app: { name: "layout", Component: LayoutApp },
-  }),
-};
+export const layoutCommand: Command = appCommand("layout", "Grid layout demo", LayoutApp);

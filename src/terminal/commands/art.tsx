@@ -1,7 +1,7 @@
 import { useReducer } from "react";
 import { colors } from "../colors";
 import { Grid } from "../../components/grid";
-import type { AppExit, Command } from "./types";
+import { appCommand, type AppExit, type Command } from "./types";
 import type { Coord } from "../geometry";
 import { useInterval } from "../hooks/useInterval";
 
@@ -103,11 +103,4 @@ function ArtApp({ onExit }: { onExit: AppExit }) {
   );
 }
 
-export const artCommand: Command = {
-  name: "art",
-  help: "Art demo",
-  run: () => ({
-    kind: "app",
-    app: { name: "art", Component: ArtApp },
-  }),
-};
+export const artCommand: Command = appCommand("art", "Art demo", ArtApp);

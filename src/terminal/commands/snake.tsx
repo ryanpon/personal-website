@@ -13,6 +13,7 @@ import {
   inBounds as coordInBounds,
   step,
 } from "../geometry";
+import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
 
 const gridSize = 15;
 const cellSize = '2ch';
@@ -36,12 +37,6 @@ type Action =
   | { type: 'RESTART' }
   | { type: 'TOGGLE_PAUSE' }
   ;
-
-type Hotkey = {
-  key: string;
-  dispatch?: Action;
-  fn?: () => void;
-};
 
 function speedOffset(growth: number): number {
   let intervalOffset: number = 0;
@@ -206,27 +201,15 @@ function SnakeApp({ onExit }: { onExit: AppExit }) {
 
   const hotkeys = useMemo<Hotkey[]>(() => [
     { key: 'q', fn: onExit },
-    { key: 'r', dispatch: { type: 'RESTART' } },
-    { key: 'p', dispatch: { type: 'TOGGLE_PAUSE' } },
-    { key: 'arrowdown', dispatch: { type: 'INPUT_DIRECTION', dir: 'down' } },
-    { key: 'arrowup', dispatch: { type: 'INPUT_DIRECTION', dir: 'up' } },
-    { key: 'arrowleft', dispatch: { type: 'INPUT_DIRECTION', dir: 'left' } },
-    { key: 'arrowright', dispatch: { type: 'INPUT_DIRECTION', dir: 'right' } },
+    { key: 'r', fn: () => dispatch({ type: 'RESTART' }) },
+    { key: 'p', fn: () => dispatch({ type: 'TOGGLE_PAUSE' }) },
+    { key: 'arrowdown', fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'down' }) },
+    { key: 'arrowup', fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'up' }) },
+    { key: 'arrowleft', fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'left' }) },
+    { key: 'arrowright', fn: () => dispatch({ type: 'INPUT_DIRECTION', dir: 'right' }) },
   ], [onExit]);
 
-  useEffect(() => {
-    const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
-    const onKey = (e: KeyboardEvent) => {
-      const handler = handlerMap.get(e.key) ?? handlerMap.get(e.key.toLowerCase());
-      if (handler) {
-        e.preventDefault();
-        if (handler.dispatch) { dispatch(handler.dispatch); }
-        if (handler.fn) { handler.fn(); }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hotkeys]);
+  useHotkeys(hotkeys);
 
   useEffect(() => {
     if (gameState.isPaused || gameState.hasLost) return;

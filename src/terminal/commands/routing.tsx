@@ -4,6 +4,7 @@ import { colorSpan, colors } from "../colors";
 import { MinHeap } from "../minheap";
 import type { AppExit, Command } from "./types";
 import { type Coord, dist, eq as coordsEq, inBounds as coordInBounds } from "../geometry";
+import { type Hotkey, useHotkeys } from "../hooks/useHotkeys";
 
 const gridSize = 20;
 const cellSize = '2.5ch';
@@ -302,13 +303,6 @@ function reducer(state: GridState, action: Action): GridState {
   }
 }
 
-type Hotkey = {
-  key: string;
-  desc: string;
-  visible: boolean;
-  fn: () => void;
-};
-
 type Cell = ReactNode | ReactNode[];
 type ContentEntry = [number, number, Cell];
 
@@ -532,18 +526,7 @@ function RoutingApp({ onExit }: { onExit: AppExit }) {
     { key: 'b', desc: 'toggle between blocked and unblocked', visible: editMode, fn: () => dispatch({ type: 'TOGGLE_BLOCK' }) },
   ], [onExit, editMode, paused, flashCursor, pathfinderInterval]);
 
-  useEffect(() => {
-    const handlerMap = new Map(hotkeys.map(h => [h.key, h]));
-    const onKey = (e: KeyboardEvent) => {
-      const handler = handlerMap.get(e.key) ?? handlerMap.get(e.key.toLowerCase());
-      if (handler) {
-        e.preventDefault();
-        handler.fn();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hotkeys]);
+  useHotkeys(hotkeys);
 
   return (
     <>

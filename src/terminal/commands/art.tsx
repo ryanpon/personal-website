@@ -8,14 +8,15 @@ import { pad } from "../helpers";
 const gridSize = 20;
 
 type Coord = [number, number];
+type Degree = number;
 type State = {
-  line: [Coord, Coord],
+  lineDeg: [Degree, Degree],
 };
 type Action =
   | { type: 'TICK' }
   ;
 
-function pointToLineDist([px, py]: Coord, [x1, y1]: Coord, [x2, y2]: Coord): number {
+function pointToLineDist([px, py]: Coord, [x1, y1]: Coord, [x2, y2]: Coord, infinite = true): number {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const lenSq = dx * dx + dy * dy;
@@ -26,7 +27,10 @@ function pointToLineDist([px, py]: Coord, [x1, y1]: Coord, [x2, y2]: Coord): num
   }
 
   // Project point onto the line (infinite), clamp to segment [0, 1]
-  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  if (!infinite) {
+    t = Math.max(0, Math.min(1, t));
+  }
 
   const nearestX = x1 + t * dx;
   const nearestY = y1 + t * dy;
@@ -34,23 +38,30 @@ function pointToLineDist([px, py]: Coord, [x1, y1]: Coord, [x2, y2]: Coord): num
   return Math.hypot(px - nearestX, py - nearestY);
 }
 
+function pointOnCircle([cx, cy]: Coord, radius: number, angleDeg: Degree): Coord {
+  const rad = (angleDeg * Math.PI) / 180;
+  return [
+    cx + radius * Math.cos(rad),
+    cy + radius * Math.sin(rad),
+  ];
+}
+
 function initialState(): State {
   return {
-    line: [[0, 0], [20, 20]]
+    lineDeg: [0, 180]
   }
 }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'TICK': {
-      const [[lx1, ly1], [lx2, ly2]] = state.line;
-
+      const [l1, l2] = state.lineDeg;
       return {
-        line: [
-          [lx1, ly1],
-          [(lx2 + 1) % gridSize, (ly2 + 1) % gridSize]
+        lineDeg: [
+          (l1 + 10) % 360,
+          (l2 + 10) % 360
         ]
-      }
+      };
     }
   }
 }
@@ -58,13 +69,18 @@ function reducer(state: State, action: Action): State {
 function ArtApp({ onExit }: { onExit: AppExit }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
 
-  const [line1, line2] = state.line;
+  const [l1, l2] = state.lineDeg;
+  const line1 = pointOnCircle([9.5, 9.5], 1, l1);
+  const line2 = pointOnCircle([9.5, 9.5], 1, l2);
+
   const rows: Array<[string, string]> = [];
   for (let x = 0; x < gridSize; x++) {
     const row = [];
     for (let y = 0; y < gridSize; y++) {
       const point: Coord = [x, y];
       if (pointToLineDist(point, line1, line2) < 1) {
+        row.push('@');
+      } else if (pointToLineDist(point, line1, line2) < 2) {
         row.push('*');
       } else {
         row.push('.');

@@ -2,17 +2,22 @@ import { useEffect, useMemo, useReducer } from "react";
 import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import type { AppExit, Command } from "./types";
-import { pad, chunk } from "../helpers";
+import { pad, chunk, randInt } from "../helpers";
 import { Grid } from "../../components/grid";
+import {
+  type Coord,
+  type Direction,
+  OPPOSITE,
+  dirBetween,
+  eq as coordsEq,
+  inBounds as coordInBounds,
+  step,
+} from "../geometry";
 
 const gridSize = 15;
 const cellSize = '2ch';
 const emptyVal = '·';
 const initialInterval = 350;
-
-type Coord = [number, number];
-
-type Direction = 'up' | 'down' | 'left' | 'right';
 
 type GameState = {
   snake: Coord[];
@@ -38,19 +43,6 @@ type Hotkey = {
   fn?: () => void;
 };
 
-const dirOpposites: Record<Direction, Direction> = {
-  up: 'down',
-  down: 'up',
-  left: 'right',
-  right: 'left',
-};
-
-const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-function inBounds([x, y]: Coord): boolean {
-  return x >= 0 && x < gridSize && y >= 0 && y < gridSize;
-}
-
 function speedOffset(growth: number): number {
   let intervalOffset: number = 0;
   for (let i = 1; i < growth; i++) {
@@ -65,40 +57,6 @@ function speedOffset(growth: number): number {
   return intervalOffset;
 }
 
-function dir([x1, y1]: Coord, [x2, y2]: Coord): Direction {
-  if (x1 < x2) {
-    return 'right';
-  }
-  if (x1 > x2) {
-    return 'left';
-  }
-  if (y1 < y2) {
-    return 'down';
-  }
-  return 'up';
-}
-
-function nextCell([x, y]: Coord, dir: Direction): Coord {
-  switch (dir) {
-    case 'up': {
-      return [x, y - 1];
-    }
-    case 'down': {
-      return [x, y + 1];
-    }
-    case 'left': {
-      return [x - 1, y];
-    }
-    case 'right': {
-      return [x + 1, y];
-    }
-  }
-}
-
-function coordsEqual([x1, y1]: Coord, [x2, y2]: Coord): boolean {
-  return x1 === x2 && y1 === y2;
-}
-
 function coordIndex([x, y]: Coord) {
   return x + y * gridSize;
 }
@@ -106,14 +64,14 @@ function coordIndex([x, y]: Coord) {
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'TICK': {
-      const next = nextCell(state.head, state.nextDir);
-      const nextHasFood = coordsEqual(next, state.food);
+      const next = step(state.head, state.nextDir);
+      const nextHasFood = coordsEq(next, state.food);
       const body = state.snake.slice(nextHasFood ? 0 : 1);
       const snake = [...body, next];
       let food: Coord;
       if (nextHasFood) {
         food = snake[0];
-        while (snake.some(crd => coordsEqual(crd, food))) {
+        while (snake.some(crd => coordsEq(crd, food))) {
           food = [randInt(0, gridSize - 1), randInt(0, gridSize - 1)]
         }
       } else {
@@ -130,8 +88,8 @@ function reducer(state: GameState, action: Action): GameState {
         curDir: state.nextDir,
       };
 
-      const bodyCollision = body.some(crd => coordsEqual(crd, next));
-      const outOfBounds = !inBounds(next);
+      const bodyCollision = body.some(crd => coordsEq(crd, next));
+      const outOfBounds = !coordInBounds(next, gridSize);
       if (outOfBounds || bodyCollision) {
         return { ...nextState, hasLost: true };
       }
@@ -140,7 +98,7 @@ function reducer(state: GameState, action: Action): GameState {
     }
     case 'INPUT_DIRECTION': {
       const {dir} = action;
-      if (dir === dirOpposites[state.curDir]) {
+      if (dir === OPPOSITE[state.curDir]) {
         // prevents losing by u-turning into the body
         return {...state, nextDir: state.curDir};
       }
@@ -208,8 +166,8 @@ function getSegment(pCrd: Coord, crd: Coord, nCrd: Coord): string {
     }
   };
 
-  const firstDir = dir(pCrd, crd);
-  const secondDir = dir(crd, nCrd);
+  const firstDir = dirBetween(pCrd, crd);
+  const secondDir = dirBetween(crd, nCrd);
   return segments[firstDir][secondDir];
 }
 

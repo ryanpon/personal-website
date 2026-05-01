@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { MinHeap } from "../minheap";
 import type { AppExit, Command } from "./types";
+import { type Coord, dist, eq as coordsEq, inBounds as coordInBounds } from "../geometry";
 
 const gridSize = 20;
 const cellSize = '2.5ch';
@@ -11,7 +12,6 @@ const lowInterval = 200;
 const medInterval = 100;
 const highInterval = 50;
 
-type Coord = [number, number];
 type CellType = 'EMPTY' | 'BLOCKED';
 
 type SearchCell = {
@@ -20,14 +20,6 @@ type SearchCell = {
   visited: boolean;
   closed: boolean;
 };
-
-function dist([x1, y1]: Coord, [x2, y2]: Coord): number {
-  return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
-}
-
-function cmppair([x1, y1]: Coord, [x2, y2]: Coord): boolean {
-  return x1 === x2 && y1 === y2;
-}
 
 class Grid {
   readonly size: number;
@@ -46,8 +38,8 @@ class Grid {
     );
   }
 
-  inBounds([x, y]: Coord): boolean {
-    return x >= 0 && x < this.size && y >= 0 && y < this.size;
+  inBounds(c: Coord): boolean {
+    return coordInBounds(c, this.size);
   }
 
   getType([x, y]: Coord): CellType {
@@ -65,7 +57,7 @@ class Grid {
   toggleBlock(c: Coord): void {
     if (this.isBlocked(c)) {
       this.setType(c, 'EMPTY');
-    } else if (!cmppair(c, this.start) && !cmppair(c, this.end)) {
+    } else if (!coordsEq(c, this.start) && !coordsEq(c, this.end)) {
       this.setType(c, 'BLOCKED');
     }
   }
@@ -273,7 +265,7 @@ function reducer(state: GridState, action: Action): GridState {
       const { grid } = state;
       const search = state.search.clone();
       const last = search.path.at(-1);
-      if (last && cmppair(last, grid.start)) {
+      if (last && coordsEq(last, grid.start)) {
         search.done = true;
         return { ...state, search };
       }

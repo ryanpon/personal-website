@@ -4,10 +4,10 @@ import { colorSpan, colors } from "../colors";
 import { Grid } from "../../components/grid";
 import type { AppExit, Command } from "./types";
 import { pad } from "../helpers";
+import type { Coord } from "../geometry";
 
 const gridSize = 20;
 
-type Coord = [number, number];
 type Degree = number;
 type State = {
   lineDeg: [Degree, Degree],

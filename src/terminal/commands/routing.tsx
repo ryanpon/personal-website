@@ -24,7 +24,7 @@ type SearchCell = {
   closed: boolean;
 };
 
-class Grid {
+class Board {
   readonly size: number;
   start: Coord;
   end: Coord;
@@ -88,8 +88,8 @@ class Grid {
     }
   }
 
-  clone(): Grid {
-    const g = new Grid(this.size, [this.start[0], this.start[1]], [this.end[0], this.end[1]]);
+  clone(): Board {
+    const g = new Board(this.size, [this.start[0], this.start[1]], [this.end[0], this.end[1]]);
     g.cursor = [this.cursor[0], this.cursor[1]];
     g.types = this.types.map(row => row.slice());
     return g;
@@ -156,7 +156,7 @@ class Pathfinder {
 }
 
 type GridState = {
-  grid: Grid;
+  grid: Board;
   search: Pathfinder;
 };
 
@@ -208,7 +208,7 @@ function makeInitialState(): GridState {
       else if (ch === '#') blocks.push([x, y]);
     }
   }
-  const grid = new Grid(gridSize, start, end);
+  const grid = new Board(gridSize, start, end);
   blocks.forEach(c => grid.setType(c, 'BLOCKED'));
   return { grid, search: new Pathfinder(gridSize) };
 }

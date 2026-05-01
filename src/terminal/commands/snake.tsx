@@ -1,5 +1,4 @@
 import { useMemo, useReducer } from "react";
-import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { appCommand, type AppExit, type Command } from "./types";
 import { pad, chunk, randInt } from "../helpers";

@@ -66,7 +66,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-function ArtApp({ onExit }: { onExit: AppExit }) {
+function ArtApp({}: { onExit: AppExit }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
 
   const [l1, l2] = state.lineDeg;

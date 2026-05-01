@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useReducer } from "react";
-import type { ReactNode } from "react";
 import { colorSpan, colors } from "../colors";
 import { Grid } from "../../components/grid";
 import { Row } from "../../components/AppShell";
 import { appCommand, type AppExit, type Command } from "./types";
-import { pad } from "../helpers";
 
-function LayoutApp({ onExit }: { onExit: AppExit }) {
+function LayoutApp({}: { onExit: AppExit }) {
   return (
     <Row>
       <Grid
